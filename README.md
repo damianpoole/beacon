@@ -26,16 +26,19 @@ Completed (current MVP progress):
 - Repo path input and validation
 - GitHub CLI auth validation
 - PR discovery for local repos
+- PR polling loop with manual refresh
+- Failed run log capture
+- Failure classification (heuristics)
+- UI: PR list with status/actionable badges
 
 In progress / planned:
 
 - Local storage (SQLite + diff files)
-- PR polling loop and persistence
-- Failed run log capture
-- Failure classification (heuristics + Copilot fallback)
+- PR polling persistence
+- Failure classification (Copilot fallback)
 - Copilot SDK toolset integration
 - Suggestion generation and diff storage
-- UI: PR list, diff viewer, apply action
+- UI: diff viewer, apply action
 - Settings: model selection and discovery
 - Observability and safe logging
 - End-to-end smoke flow and core tests
