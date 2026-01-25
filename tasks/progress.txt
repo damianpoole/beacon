@@ -1,0 +1,1 @@
+2026-01-25: Implemented basic Electron main process with startup logging, window creation, and preload wiring. Added initial renderer shell layout (sidebar/list/detail empty states) plus styling scaffolding, and basic tests + config to support typecheck/test runs.

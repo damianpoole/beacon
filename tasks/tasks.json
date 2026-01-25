@@ -1,0 +1,226 @@
+{
+  "tasks": [
+    {
+      "category": "app-shell",
+      "description": "Initialize Electron main process and app lifecycle",
+      "steps": [
+        "App launches a single main process without errors",
+        "Main process logs basic startup status and exits cleanly",
+        "Renderer window creation is wired from main process",
+        "Polling scheduler can be started/stopped from main process"
+      ],
+      "passes": true
+    },
+    {
+      "category": "ui-shell",
+      "description": "Create basic shell UI layout in renderer (dashboard + sidebar + detail pane)",
+      "steps": [
+        "Window loads a React UI without console errors",
+        "Shell layout displays sidebar, main list, and detail pane",
+        "Empty states are shown when no repos or PRs exist"
+      ],
+      "passes": false
+    },
+    {
+      "category": "repo-management",
+      "description": "Add repo path input flow (manual path entry)",
+      "steps": [
+        "User can input a repo path string (e.g., ~/git/my-repo)",
+        "Path is normalized to absolute path",
+        "Invalid paths show a user-visible error",
+        "Valid path is stored and shown in UI list"
+      ],
+      "passes": false
+    },
+    {
+      "category": "storage",
+      "description": "Local storage (hybrid): SQLite for metadata + file storage for diffs",
+      "steps": [
+        "SQLite schema includes repos, PRs, runs, suggestions metadata",
+        "Diff content is stored as a file with a stable identifier",
+        "DB stores pointer to diff file location",
+        "CRUD operations for repos and PRs succeed"
+      ],
+      "passes": false
+    },
+    {
+      "category": "auth",
+      "description": "Integrate gh CLI auth and validation",
+      "steps": [
+        "`gh auth status` is executed from main process",
+        "Unauthenticated state prompts user to run `gh auth login`",
+        "Authenticated user info is available to the app"
+      ],
+      "passes": false
+    },
+    {
+      "category": "pr-monitoring",
+      "description": "PR discovery for local repo using gh CLI",
+      "steps": [
+        "App can list PRs authored by the current user for a repo",
+        "PR list includes number, title, branch, and status",
+        "Failure to fetch PRs is handled with error messaging"
+      ],
+      "passes": false
+    },
+    {
+      "category": "pr-monitoring",
+      "description": "Polling loop for PR checks (120s interval)",
+      "steps": [
+        "Polling starts automatically after repo added",
+        "Poll runs every 120s with no overlap",
+        "PR check status updates are persisted",
+        "Manual refresh can be triggered from UI"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ci-logs",
+      "description": "Fetch failed run logs for failing PR checks",
+      "steps": [
+        "Failing run is identified via gh PR checks",
+        "Log fetch uses `gh run view --log-failed`",
+        "Log output stored alongside run metadata",
+        "Errors in log fetch are surfaced to UI"
+      ],
+      "passes": false
+    },
+    {
+      "category": "classification",
+      "description": "Failure classification (hybrid heuristic + model fallback)",
+      "steps": [
+        "Heuristic classifier tags infra vs code failures using keywords",
+        "If ambiguous, request Copilot classification",
+        "Infra failures are marked as non-actionable",
+        "Code failures are marked as actionable"
+      ],
+      "passes": false
+    },
+    {
+      "category": "copilot",
+      "description": "Copilot SDK integration with toolset for log reading and file reading",
+      "steps": [
+        "SDK session can be created with tools",
+        "Tool for CI log retrieval is available to the model",
+        "Tool for reading local file content is available",
+        "Model receives system prompt aligned with fix-only scope"
+      ],
+      "passes": false
+    },
+    {
+      "category": "copilot",
+      "description": "Suggestion generation for lint/unit/format errors",
+      "steps": [
+        "Model produces a textual diff for code failures",
+        "Diff is stored as virtual diff (no local file mutation)",
+        "Suggestion metadata includes PR/run references",
+        "Non-code failures skip suggestion generation"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ui-prs",
+      "description": "PR list UI with status indicators",
+      "steps": [
+        "List shows PRs for selected repo",
+        "Each PR shows status badge (passing/failing/analyzing)",
+        "Failed PR indicates actionable vs non-actionable"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ui-diff",
+      "description": "Diff viewer for suggested fix",
+      "steps": [
+        "Diff panel renders the stored virtual diff",
+        "Diff panel shows PR and run metadata context",
+        "Empty state shown if no suggestion exists"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ui-apply",
+      "description": "Apply action UI (suggest-only, no auto-commit)",
+      "steps": [
+        "UI can request apply of suggestion",
+        "Apply action writes patch to working tree only",
+        "No auto-commit or push occurs",
+        "Success/failure feedback is shown"
+      ],
+      "passes": false
+    },
+    {
+      "category": "settings",
+      "description": "Settings UI for model selection",
+      "steps": [
+        "Settings screen exposes model selection input",
+        "Selected model value is persisted",
+        "Model value is used when starting SDK sessions"
+      ],
+      "passes": false
+    },
+    {
+      "category": "copilot",
+      "description": "Model discovery strategy (if SDK lacks list)",
+      "steps": [
+        "If SDK provides model list, populate settings from it",
+        "If not, accept free-form model name with validation error feedback",
+        "Document expected model identifiers for the user"
+      ],
+      "passes": false
+    },
+    {
+      "category": "observability",
+      "description": "Basic error handling and telemetry-safe logging",
+      "steps": [
+        "Errors are logged locally without exfiltrating code",
+        "UI shows user-friendly error toasts/messages",
+        "Log files avoid sensitive repo content"
+      ],
+      "passes": false
+    },
+    {
+      "category": "integration",
+      "description": "End-to-end smoke flow",
+      "steps": [
+        "Add repo path → PRs appear",
+        "Failing PR detected → logs fetched",
+        "Actionable failure → suggestion generated",
+        "Diff displayed in UI"
+      ],
+      "passes": false
+    },
+    {
+      "category": "apply-patch",
+      "description": "Apply virtual diff to working tree",
+      "steps": [
+        "Diff parser supports unified diff format",
+        "Patch apply succeeds for supported files",
+        "Conflicts are detected and reported",
+        "Apply action never commits or pushes"
+      ],
+      "passes": false
+    },
+    {
+      "category": "quality",
+      "description": "Basic test coverage for core services",
+      "steps": [
+        "Repo path normalization has unit tests",
+        "PR polling scheduler has unit tests",
+        "Failure classifier has unit tests",
+        "Diff storage loader has unit tests"
+      ],
+      "passes": false
+    },
+    {
+      "category": "docs",
+      "description": "MVP usage documentation",
+      "steps": [
+        "README includes setup and required tools",
+        "Document how to authenticate with gh CLI",
+        "Document model selection behavior"
+      ],
+      "passes": false
+    }
+  ]
+}
