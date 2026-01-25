@@ -19,7 +19,7 @@
         "Shell layout displays sidebar, main list, and detail pane",
         "Empty states are shown when no repos or PRs exist"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "repo-management",
