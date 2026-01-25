@@ -5,6 +5,7 @@ import { logError, logInfo } from "./logging.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
 const createMainWindow = (): BrowserWindow => {
   const window = new BrowserWindow({
@@ -23,7 +24,11 @@ const createMainWindow = (): BrowserWindow => {
     window.show();
   });
 
-  void window.loadFile(join(__dirname, "../../index.html"));
+  if (devServerUrl) {
+    void window.loadURL(devServerUrl);
+  } else {
+    void window.loadFile(join(__dirname, "../renderer/index.html"));
+  }
 
   return window;
 };
