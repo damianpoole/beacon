@@ -5,3 +5,4 @@
 2026-01-25: Fixed preload failures by moving Node-dependent repo normalization into main-process IPC, leaving preload as an IPC-only bridge. Updated renderer types and async usage to match; rebuild restores auth panel.
 2026-01-25: Implemented PR discovery via gh CLI IPC, wired repo selection + PR list UI with error/loading states, and updated styles/tests. Marked PR discovery task complete; pnpm typecheck/test pass.
 2026-01-25: Added PR polling loop with 120s interval and non-overlap guard, plus manual refresh button. Updated tests and marked polling task complete; pnpm typecheck/test pass.
+2026-01-25: Implemented failed CI log fetching via gh pr checks + gh run view, surfaced details in the UI, and fixed shell test expectation. Marked ci-logs task complete.

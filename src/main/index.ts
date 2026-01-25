@@ -23,10 +23,43 @@ type PullRequest = {
   status: string;
 };
 type PullRequestResult = { prs?: PullRequest[]; error?: string };
+type PrCheck = {
+  name: string;
+  state: string;
+  detailsUrl?: string;
+  link?: string;
+};
+type FailedLogResult = {
+  log?: string;
+  runId?: number;
+  checkName?: string;
+  error?: string;
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+
+const extractRunId = (url?: string): number | null => {
+  if (!url) {
+    return null;
+  }
+
+  const match = url.match(/\/runs\/(\d+)/i);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isFailingCheck = (state: string): boolean => {
+  const normalized = state.toUpperCase();
+  return ["FAILURE", "FAILED", "ERROR", "CANCELLED", "TIMED_OUT"].includes(
+    normalized
+  );
+};
 
 const createMainWindow = (): BrowserWindow => {
   const window = new BrowserWindow({
@@ -185,6 +218,89 @@ const main = async (): Promise<void> => {
           return {
             error: `Failed to fetch PRs. (${details})`
           };
+        }
+      }
+    );
+
+    ipcMain.handle(
+      "ci:failed-log",
+      async (
+        _event,
+        repoPath: string,
+        prNumber: number
+      ): Promise<FailedLogResult> => {
+        if (!repoPath) {
+          return { error: "Select a repository first." };
+        }
+
+        if (!Number.isFinite(prNumber) || prNumber <= 0) {
+          return { error: "Select a pull request first." };
+        }
+
+        if (!existsSync(repoPath)) {
+          return { error: "Repository path no longer exists." };
+        }
+
+        try {
+          const stats = statSync(repoPath);
+          if (!stats.isDirectory()) {
+            return { error: "Repository path is not a directory." };
+          }
+        } catch (error) {
+          return {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Unable to read repository path."
+          };
+        }
+
+        try {
+          const { stdout } = await execFileAsync(
+            "gh",
+            [
+              "pr",
+              "checks",
+              String(prNumber),
+              "--json",
+              "name,state,detailsUrl,link"
+            ],
+            { cwd: repoPath }
+          );
+
+          const parsed: PrCheck[] = JSON.parse(stdout || "[]");
+          const failingCheck = parsed.find((check) => isFailingCheck(check.state));
+
+          if (!failingCheck) {
+            return { error: "No failing checks found for this PR." };
+          }
+
+          const runId =
+            extractRunId(failingCheck.detailsUrl) ??
+            extractRunId(failingCheck.link);
+
+          if (!runId) {
+            return { error: "Unable to determine run ID from PR checks." };
+          }
+
+          const { stdout: logOutput } = await execFileAsync(
+            "gh",
+            ["run", "view", String(runId), "--log-failed"],
+            { cwd: repoPath, maxBuffer: 10 * 1024 * 1024 }
+          );
+
+          return {
+            log: logOutput.trimEnd(),
+            runId,
+            checkName: failingCheck.name
+          };
+        } catch (error) {
+          const details =
+            error instanceof Error
+              ? error.message
+              : "Unable to fetch failed run logs.";
+          logError("Failed to fetch run logs", { error: details, prNumber });
+          return { error: `Failed to fetch run logs. (${details})` };
         }
       }
     );

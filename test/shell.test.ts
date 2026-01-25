@@ -9,7 +9,7 @@ const getShellLabels = () => {
     "Tracked repos",
     "GitHub auth",
     "Pull Requests",
-    "Refresh"
+    "Refresh",
   ];
 };
 

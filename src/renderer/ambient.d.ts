@@ -22,6 +22,15 @@ declare global {
         }>;
         error?: string;
       }>;
+      fetchFailedRunLog: (
+        repoPath: string,
+        prNumber: number
+      ) => Promise<{
+        log?: string;
+        runId?: number;
+        checkName?: string;
+        error?: string;
+      }>;
     };
   }
 }
