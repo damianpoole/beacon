@@ -30,7 +30,7 @@
         "Invalid paths show a user-visible error",
         "Valid path is stored and shown in UI list"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "storage",

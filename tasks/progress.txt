@@ -1,2 +1,3 @@
 2026-01-25: Implemented basic Electron main process with startup logging, window creation, and preload wiring. Added initial renderer shell layout (sidebar/list/detail empty states) plus styling scaffolding, and basic tests + config to support typecheck/test runs.
 2026-01-25: Verified ui-shell task completion, updated task tracker to passing, and confirmed app shell layout + empty states are in place.
+2026-01-25: Added repo path input flow with main-process normalization and validation, plus UI list + error feedback and styling. Updated tests and marked repo-management task complete; typecheck/test pass.
