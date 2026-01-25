@@ -1,7 +1,17 @@
-import { BrowserWindow, app } from "electron";
+import { BrowserWindow, app, ipcMain } from "electron";
+import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
+
+const execFileAsync = promisify(execFile);
+
+type AuthStatus = {
+  authenticated: boolean;
+  username?: string;
+  message: string;
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,6 +49,32 @@ const main = async (): Promise<void> => {
   try {
     await app.whenReady();
     logInfo("Electron app ready");
+
+    ipcMain.handle("auth:status", async (): Promise<AuthStatus> => {
+      try {
+        const { stdout } = await execFileAsync("gh", [
+          "auth",
+          "status",
+          "-h",
+          "github.com"
+        ]);
+        const match = stdout.match(/Logged in to .* as ([^\s]+)\./i);
+        return {
+          authenticated: true,
+          username: match?.[1],
+          message: "Authenticated"
+        };
+      } catch (error) {
+        const details =
+          error instanceof Error
+            ? error.message
+            : "Unable to check auth status.";
+        return {
+          authenticated: false,
+          message: `Run \`gh auth login\` to authenticate. (${details})`
+        };
+      }
+    });
 
     createMainWindow();
 

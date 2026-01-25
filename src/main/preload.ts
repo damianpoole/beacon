@@ -1,9 +1,10 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 type NormalizeResult = { path?: string; error?: string };
+type AuthStatus = { authenticated: boolean; username?: string; message: string };
 
 const normalizeRepoPath = (input: string): NormalizeResult => {
   const trimmed = input.trim();
@@ -38,5 +39,6 @@ const normalizeRepoPath = (input: string): NormalizeResult => {
 
 contextBridge.exposeInMainWorld("beacon", {
   version: "0.1",
-  normalizeRepoPath
+  normalizeRepoPath,
+  getAuthStatus: (): Promise<AuthStatus> => ipcRenderer.invoke("auth:status")
 });

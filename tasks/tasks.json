@@ -51,7 +51,7 @@
         "Unauthenticated state prompts user to run `gh auth login`",
         "Authenticated user info is available to the app"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "pr-monitoring",

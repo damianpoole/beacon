@@ -8,6 +8,11 @@ declare global {
         path?: string;
         error?: string;
       };
+      getAuthStatus: () => Promise<{
+        authenticated: boolean;
+        username?: string;
+        message: string;
+      }>;
     };
   }
 }

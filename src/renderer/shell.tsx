@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const EmptyState: React.FC<{ title: string; description: string }> = ({
   title,
@@ -16,6 +16,37 @@ export const ShellLayout: React.FC = () => {
   const [repoInput, setRepoInput] = useState("");
   const [repoPaths, setRepoPaths] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<
+    | { state: "loading" }
+    | { state: "ready"; authenticated: boolean; username?: string; message: string }
+  >({ state: "loading" });
+
+  useEffect(() => {
+    let active = true;
+
+    window.beacon
+      .getAuthStatus()
+      .then((status) => {
+        if (!active) {
+          return;
+        }
+        setAuthStatus({ state: "ready", ...status });
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setAuthStatus({
+          state: "ready",
+          authenticated: false,
+          message: error instanceof Error ? error.message : "Unable to load auth."
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const hasRepos = repoPaths.length > 0;
   const handleAddRepo = () => {
@@ -43,6 +74,18 @@ export const ShellLayout: React.FC = () => {
     <div className="shell">
       <aside className="sidebar">
         <h2>Beacon</h2>
+        <section className="auth-panel">
+          <h3>GitHub auth</h3>
+          {authStatus.state === "loading" ? (
+            <p>Checking authentication...</p>
+          ) : authStatus.authenticated ? (
+            <p>
+              Signed in{authStatus.username ? ` as ${authStatus.username}` : "."}
+            </p>
+          ) : (
+            <p>{authStatus.message}</p>
+          )}
+        </section>
         <section className="repo-panel">
           <h3>Add a repository</h3>
           <p>Enter a local path to start monitoring PRs.</p>

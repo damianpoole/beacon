@@ -6,7 +6,8 @@ const getShellLabels = () => {
     "No PRs to show",
     "Nothing selected",
     "Add a repository",
-    "Tracked repos"
+    "Tracked repos",
+    "GitHub auth"
   ];
 };
 
@@ -17,5 +18,6 @@ describe("shell layout", () => {
     expect(getShellLabels()).toContain("Nothing selected");
     expect(getShellLabels()).toContain("Add a repository");
     expect(getShellLabels()).toContain("Tracked repos");
+    expect(getShellLabels()).toContain("GitHub auth");
   });
 });
