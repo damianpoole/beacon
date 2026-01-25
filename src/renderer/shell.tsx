@@ -103,6 +103,21 @@ export const ShellLayout: React.FC = () => {
   const selectedLog = selectedPrNumber
     ? failedLogsByPr[selectedPrNumber] ?? null
     : null;
+  const getActionLabel = (classification?: FailedLog["classification"]) => {
+    if (!classification) {
+      return null;
+    }
+
+    if (classification.actionable) {
+      return "Actionable";
+    }
+
+    if (classification.tag === "infra") {
+      return "Infra";
+    }
+
+    return "Needs review";
+  };
   const handleAddRepo = async () => {
     const result = await window.beacon.normalizeRepoPath(repoInput);
 
@@ -329,30 +344,45 @@ export const ShellLayout: React.FC = () => {
           ) : selectedRepo ? (
             hasPrs ? (
               <ul className="pr-list">
-                {pullRequests.map((pr) => (
-                  <li key={pr.number}>
-                    <button
-                      type="button"
-                      className={
-                        selectedPrNumber === pr.number
-                          ? "pr-card-button selected"
-                          : "pr-card-button"
-                      }
-                      onClick={() => handleSelectPr(pr.number)}
-                    >
-                      <div className="pr-title">
-                        <span className="pr-number">#{pr.number}</span>
-                        {pr.title}
-                      </div>
-                      <div className="pr-meta">
-                        <span>{pr.branch}</span>
-                        <span className={`pr-status ${pr.status.toLowerCase()}`}>
-                          {pr.status}
-                        </span>
-                      </div>
-                    </button>
-                  </li>
-                ))}
+                {pullRequests.map((pr) => {
+                  const classification = failedLogsByPr[pr.number]?.classification;
+                  const actionLabel = getActionLabel(classification);
+                  return (
+                    <li key={pr.number}>
+                      <button
+                        type="button"
+                        className={
+                          selectedPrNumber === pr.number
+                            ? "pr-card-button selected"
+                            : "pr-card-button"
+                        }
+                        onClick={() => handleSelectPr(pr.number)}
+                      >
+                        <div className="pr-title">
+                          <span className="pr-number">#{pr.number}</span>
+                          {pr.title}
+                        </div>
+                        <div className="pr-meta">
+                          <span>{pr.branch}</span>
+                          <span className="pr-badges">
+                            <span className={`pr-status ${pr.status.toLowerCase()}`}>
+                              {pr.status}
+                            </span>
+                            {actionLabel ? (
+                              <span
+                                className={`pr-action-tag ${
+                                  classification?.tag ?? "unknown"
+                                }`}
+                              >
+                                {actionLabel}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <EmptyState
@@ -393,24 +423,20 @@ export const ShellLayout: React.FC = () => {
                 </div>
               ) : selectedLog ? (
                 <div className="log-panel">
-                <div className="log-meta">
-                  <span>{selectedLog.checkName ?? "Failed check"}</span>
-                  {selectedLog.runId ? <span>Run {selectedLog.runId}</span> : null}
-                </div>
-                {selectedLog.classification ? (
-                  <div className="log-classification">
-                    <span className={`classification-tag ${selectedLog.classification.tag}`}>
-                      {selectedLog.classification.actionable
-                        ? "Actionable"
-                        : selectedLog.classification.tag === "infra"
-                          ? "Infra"
-                          : "Needs review"}
-                    </span>
-                    <p>{selectedLog.classification.reason}</p>
+                  <div className="log-meta">
+                    <span>{selectedLog.checkName ?? "Failed check"}</span>
+                    {selectedLog.runId ? <span>Run {selectedLog.runId}</span> : null}
                   </div>
-                ) : null}
-                <pre className="log-output">{selectedLog.log}</pre>
-              </div>
+                  {selectedLog.classification ? (
+                    <div className="log-classification">
+                      <span className={`classification-tag ${selectedLog.classification.tag}`}>
+                        {getActionLabel(selectedLog.classification)}
+                      </span>
+                      <p>{selectedLog.classification.reason}</p>
+                    </div>
+                  ) : null}
+                  <pre className="log-output">{selectedLog.log}</pre>
+                </div>
               ) : (
                 <EmptyState
                   title="No logs yet"

@@ -126,7 +126,7 @@
         "Each PR shows status badge (passing/failing/analyzing)",
         "Failed PR indicates actionable vs non-actionable"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "ui-diff",

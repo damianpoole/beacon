@@ -402,6 +402,12 @@ body {
   color: #5b5f66;
 }
 
+.pr-badges {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .pr-status {
   padding: 4px 10px;
   border-radius: 999px;
@@ -422,6 +428,27 @@ body {
 .pr-status.merged {
   background: rgba(82, 95, 116, 0.12);
   color: #3f4b5a;
+}
+
+.pr-action-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  background: rgba(47, 75, 63, 0.14);
+  color: #2f4b3f;
+}
+
+.pr-action-tag.infra {
+  background: rgba(82, 95, 116, 0.18);
+  color: #3f4b5a;
+}
+
+.pr-action-tag.unknown {
+  background: rgba(176, 60, 60, 0.12);
+  color: #8b2b2b;
 }
 
 .sr-only {
