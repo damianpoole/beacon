@@ -18,17 +18,28 @@ type PullRequest = {
   branch: string;
   status: string;
 };
+type FailedLog = {
+  log: string;
+  runId?: number;
+  checkName?: string;
+};
 
 export const ShellLayout: React.FC = () => {
   const [repoInput, setRepoInput] = useState("");
   const [repoPaths, setRepoPaths] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(null);
   const [prError, setPrError] = useState<string | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
   const [pullRequestsByRepo, setPullRequestsByRepo] = useState<
     Record<string, PullRequest[]>
   >({});
+  const [failedLogsByPr, setFailedLogsByPr] = useState<
+    Record<number, FailedLog>
+  >({});
   const [isLoadingPrs, setIsLoadingPrs] = useState(false);
+  const [isLoadingLog, setIsLoadingLog] = useState(false);
   const [authStatus, setAuthStatus] = useState<
     | { state: "loading" }
     | { state: "ready"; authenticated: boolean; username?: string; message: string }
@@ -79,6 +90,12 @@ export const ShellLayout: React.FC = () => {
   const pullRequests = selectedRepo ? pullRequestsByRepo[selectedRepo] ?? [] : [];
   const hasRepos = repoPaths.length > 0;
   const hasPrs = pullRequests.length > 0;
+  const selectedPullRequest = selectedPrNumber
+    ? pullRequests.find((pr) => pr.number === selectedPrNumber) ?? null
+    : null;
+  const selectedLog = selectedPrNumber
+    ? failedLogsByPr[selectedPrNumber] ?? null
+    : null;
   const handleAddRepo = async () => {
     const result = await window.beacon.normalizeRepoPath(repoInput);
 
@@ -137,6 +154,7 @@ export const ShellLayout: React.FC = () => {
 
   const handleSelectRepo = (repo: string) => {
     setSelectedRepo(repo);
+    setSelectedPrNumber(null);
     void loadPullRequests(repo);
   };
 
@@ -159,6 +177,57 @@ export const ShellLayout: React.FC = () => {
       pollingRef.current.inFlight = false;
     };
   }, [selectedRepo]);
+
+  const handleSelectPr = (prNumber: number) => {
+    setSelectedPrNumber(prNumber);
+    setLogError(null);
+  };
+
+  const handleFetchFailedLog = async () => {
+    if (!selectedRepo || !selectedPullRequest) {
+      return;
+    }
+
+    const logClient = window.beacon?.fetchFailedRunLog;
+    if (!logClient) {
+      setLogError("Failed log API unavailable.");
+      return;
+    }
+
+    setIsLoadingLog(true);
+    setLogError(null);
+    try {
+      const result = await logClient(selectedRepo, selectedPullRequest.number);
+      if (result.error) {
+        setLogError(result.error);
+        return;
+      }
+
+      const logText = result.log;
+      if (logText === undefined) {
+        setLogError("No failed log output returned.");
+        return;
+      }
+
+      if (logText.length === 0) {
+        setLogError("Failed log output was empty.");
+        return;
+      }
+
+      setFailedLogsByPr((current) => ({
+        ...current,
+        [selectedPullRequest.number]: {
+          log: logText,
+          runId: result.runId,
+          checkName: result.checkName
+        }
+      }));
+    } catch (error) {
+      setLogError(error instanceof Error ? error.message : "Unable to load logs.");
+    } finally {
+      setIsLoadingLog(false);
+    }
+  };
 
   return (
     <div className="shell">
@@ -253,17 +322,27 @@ export const ShellLayout: React.FC = () => {
             hasPrs ? (
               <ul className="pr-list">
                 {pullRequests.map((pr) => (
-                  <li key={pr.number} className="pr-card">
-                    <div className="pr-title">
-                      <span className="pr-number">#{pr.number}</span>
-                      {pr.title}
-                    </div>
-                    <div className="pr-meta">
-                      <span>{pr.branch}</span>
-                      <span className={`pr-status ${pr.status.toLowerCase()}`}>
-                        {pr.status}
-                      </span>
-                    </div>
+                  <li key={pr.number}>
+                    <button
+                      type="button"
+                      className={
+                        selectedPrNumber === pr.number
+                          ? "pr-card-button selected"
+                          : "pr-card-button"
+                      }
+                      onClick={() => handleSelectPr(pr.number)}
+                    >
+                      <div className="pr-title">
+                        <span className="pr-number">#{pr.number}</span>
+                        {pr.title}
+                      </div>
+                      <div className="pr-meta">
+                        <span>{pr.branch}</span>
+                        <span className={`pr-status ${pr.status.toLowerCase()}`}>
+                          {pr.status}
+                        </span>
+                      </div>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -284,10 +363,47 @@ export const ShellLayout: React.FC = () => {
           <header>
             <h2>Details</h2>
           </header>
-          <EmptyState
-            title="Nothing selected"
-            description="Pick a pull request to review failures and fixes."
-          />
+          {selectedPullRequest ? (
+            <div className="detail-panel">
+              <div className="detail-heading">
+                <div>
+                  <h3>PR #{selectedPullRequest.number}</h3>
+                  <p>{selectedPullRequest.title}</p>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={handleFetchFailedLog}
+                  disabled={isLoadingLog}
+                >
+                  {isLoadingLog ? "Fetching log..." : "Fetch failed log"}
+                </button>
+              </div>
+              {logError ? (
+                <div className="panel-message error" role="alert">
+                  {logError}
+                </div>
+              ) : selectedLog ? (
+                <div className="log-panel">
+                  <div className="log-meta">
+                    <span>{selectedLog.checkName ?? "Failed check"}</span>
+                    {selectedLog.runId ? <span>Run {selectedLog.runId}</span> : null}
+                  </div>
+                  <pre className="log-output">{selectedLog.log}</pre>
+                </div>
+              ) : (
+                <EmptyState
+                  title="No logs yet"
+                  description="Fetch failed logs to see details here."
+                />
+              )}
+            </div>
+          ) : (
+            <EmptyState
+              title="Nothing selected"
+              description="Pick a pull request to review failures and fixes."
+            />
+          )}
         </section>
       </main>
     </div>

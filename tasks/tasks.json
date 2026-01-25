@@ -83,7 +83,7 @@
         "Log output stored alongside run metadata",
         "Errors in log fetch are surfaced to UI"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "classification",

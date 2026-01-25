@@ -9,6 +9,12 @@ type PullRequest = {
   status: string;
 };
 type PullRequestResult = { prs?: PullRequest[]; error?: string };
+type FailedLogResult = {
+  log?: string;
+  runId?: number;
+  checkName?: string;
+  error?: string;
+};
 
 contextBridge.exposeInMainWorld("beacon", {
   version: "0.1",
@@ -16,5 +22,10 @@ contextBridge.exposeInMainWorld("beacon", {
     ipcRenderer.invoke("repo:normalize", input),
   getAuthStatus: (): Promise<AuthStatus> => ipcRenderer.invoke("auth:status"),
   listPullRequests: (repoPath: string): Promise<PullRequestResult> =>
-    ipcRenderer.invoke("repo:list-prs", repoPath)
+    ipcRenderer.invoke("repo:list-prs", repoPath),
+  fetchFailedRunLog: (
+    repoPath: string,
+    prNumber: number
+  ): Promise<FailedLogResult> =>
+    ipcRenderer.invoke("ci:failed-log", repoPath, prNumber)
 });
