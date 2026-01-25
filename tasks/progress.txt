@@ -6,3 +6,4 @@
 2026-01-25: Implemented PR discovery via gh CLI IPC, wired repo selection + PR list UI with error/loading states, and updated styles/tests. Marked PR discovery task complete; pnpm typecheck/test pass.
 2026-01-25: Added PR polling loop with 120s interval and non-overlap guard, plus manual refresh button. Updated tests and marked polling task complete; pnpm typecheck/test pass.
 2026-01-25: Implemented failed CI log fetching via gh pr checks + gh run view, surfaced details in the UI, and fixed shell test expectation. Marked ci-logs task complete.
+2026-01-25: Added heuristic failure classification of CI logs (infra vs code vs unknown) in main process, wired classification into log response and UI badges, and marked classification task complete.

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
+import { classifyFailure } from "./classifier.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -33,6 +34,13 @@ type FailedLogResult = {
   log?: string;
   runId?: number;
   checkName?: string;
+  classification?: {
+    tag: "infra" | "code" | "unknown";
+    actionable: boolean;
+    requiresCopilot: boolean;
+    reason: string;
+    matched?: string[];
+  };
   error?: string;
 };
 
@@ -289,11 +297,13 @@ const main = async (): Promise<void> => {
             { cwd: repoPath, maxBuffer: 10 * 1024 * 1024 }
           );
 
-          return {
-            log: logOutput.trimEnd(),
-            runId,
-            checkName: failingCheck.name
-          };
+           const trimmedLog = logOutput.trimEnd();
+           return {
+             log: trimmedLog,
+             runId,
+             checkName: failingCheck.name,
+             classification: classifyFailure(trimmedLog)
+           };
         } catch (error) {
           const details =
             error instanceof Error

@@ -331,6 +331,40 @@ body {
   color: #6a6f75;
 }
 
+.log-classification {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #efe9e1;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(190, 173, 156, 0.4);
+  font-size: 13px;
+  color: #4b4f55;
+}
+
+.classification-tag {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  background: rgba(47, 75, 63, 0.14);
+  color: #2f4b3f;
+}
+
+.classification-tag.infra {
+  background: rgba(82, 95, 116, 0.18);
+  color: #3f4b5a;
+}
+
+.classification-tag.unknown {
+  background: rgba(176, 60, 60, 0.12);
+  color: #8b2b2b;
+}
+
 .log-output {
   margin: 0;
   background: #1f2228;

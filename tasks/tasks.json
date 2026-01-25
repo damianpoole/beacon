@@ -94,7 +94,7 @@
         "Infra failures are marked as non-actionable",
         "Code failures are marked as actionable"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "copilot",

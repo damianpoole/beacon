@@ -13,6 +13,13 @@ type FailedLogResult = {
   log?: string;
   runId?: number;
   checkName?: string;
+  classification?: {
+    tag: "infra" | "code" | "unknown";
+    actionable: boolean;
+    requiresCopilot: boolean;
+    reason: string;
+    matched?: string[];
+  };
   error?: string;
 };
 

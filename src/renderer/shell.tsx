@@ -22,6 +22,13 @@ type FailedLog = {
   log: string;
   runId?: number;
   checkName?: string;
+  classification?: {
+    tag: "infra" | "code" | "unknown";
+    actionable: boolean;
+    requiresCopilot: boolean;
+    reason: string;
+    matched?: string[];
+  };
 };
 
 export const ShellLayout: React.FC = () => {
@@ -219,7 +226,8 @@ export const ShellLayout: React.FC = () => {
         [selectedPullRequest.number]: {
           log: logText,
           runId: result.runId,
-          checkName: result.checkName
+          checkName: result.checkName,
+          classification: result.classification
         }
       }));
     } catch (error) {
@@ -385,12 +393,24 @@ export const ShellLayout: React.FC = () => {
                 </div>
               ) : selectedLog ? (
                 <div className="log-panel">
-                  <div className="log-meta">
-                    <span>{selectedLog.checkName ?? "Failed check"}</span>
-                    {selectedLog.runId ? <span>Run {selectedLog.runId}</span> : null}
-                  </div>
-                  <pre className="log-output">{selectedLog.log}</pre>
+                <div className="log-meta">
+                  <span>{selectedLog.checkName ?? "Failed check"}</span>
+                  {selectedLog.runId ? <span>Run {selectedLog.runId}</span> : null}
                 </div>
+                {selectedLog.classification ? (
+                  <div className="log-classification">
+                    <span className={`classification-tag ${selectedLog.classification.tag}`}>
+                      {selectedLog.classification.actionable
+                        ? "Actionable"
+                        : selectedLog.classification.tag === "infra"
+                          ? "Infra"
+                          : "Needs review"}
+                    </span>
+                    <p>{selectedLog.classification.reason}</p>
+                  </div>
+                ) : null}
+                <pre className="log-output">{selectedLog.log}</pre>
+              </div>
               ) : (
                 <EmptyState
                   title="No logs yet"
