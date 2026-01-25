@@ -8,7 +8,8 @@ const getShellLabels = () => {
     "Add a repository",
     "Tracked repos",
     "GitHub auth",
-    "Pull Requests"
+    "Pull Requests",
+    "Refresh"
   ];
 };
 
@@ -21,5 +22,6 @@ describe("shell layout", () => {
     expect(getShellLabels()).toContain("Tracked repos");
     expect(getShellLabels()).toContain("GitHub auth");
     expect(getShellLabels()).toContain("Pull Requests");
+    expect(getShellLabels()).toContain("Refresh");
   });
 });

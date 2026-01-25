@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const EmptyState: React.FC<{ title: string; description: string }> = ({
   title,
@@ -12,20 +12,31 @@ const EmptyState: React.FC<{ title: string; description: string }> = ({
   );
 };
 
+type PullRequest = {
+  number: number;
+  title: string;
+  branch: string;
+  status: string;
+};
+
 export const ShellLayout: React.FC = () => {
   const [repoInput, setRepoInput] = useState("");
   const [repoPaths, setRepoPaths] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [prError, setPrError] = useState<string | null>(null);
-  const [pullRequests, setPullRequests] = useState<
-    Array<{ number: number; title: string; branch: string; status: string }>
-  >([]);
+  const [pullRequestsByRepo, setPullRequestsByRepo] = useState<
+    Record<string, PullRequest[]>
+  >({});
   const [isLoadingPrs, setIsLoadingPrs] = useState(false);
   const [authStatus, setAuthStatus] = useState<
     | { state: "loading" }
     | { state: "ready"; authenticated: boolean; username?: string; message: string }
   >({ state: "loading" });
+  const pollingRef = useRef<{ intervalId: ReturnType<typeof setInterval> | null; inFlight: boolean }>({
+    intervalId: null,
+    inFlight: false
+  });
 
   useEffect(() => {
     let active = true;
@@ -65,6 +76,7 @@ export const ShellLayout: React.FC = () => {
     };
   }, []);
 
+  const pullRequests = selectedRepo ? pullRequestsByRepo[selectedRepo] ?? [] : [];
   const hasRepos = repoPaths.length > 0;
   const hasPrs = pullRequests.length > 0;
   const handleAddRepo = async () => {
@@ -90,28 +102,36 @@ export const ShellLayout: React.FC = () => {
   };
 
   const loadPullRequests = async (repoPath: string) => {
+    if (pollingRef.current.inFlight) {
+      return;
+    }
     const listClient = window.beacon?.listPullRequests;
     if (!listClient) {
       setPrError("Pull request API unavailable.");
-      setPullRequests([]);
+      setPullRequestsByRepo((current) => ({ ...current, [repoPath]: [] }));
       return;
     }
 
     setIsLoadingPrs(true);
     setPrError(null);
+    pollingRef.current.inFlight = true;
     try {
       const result = await listClient(repoPath);
       if (result.error) {
         setPrError(result.error);
-        setPullRequests([]);
+        setPullRequestsByRepo((current) => ({ ...current, [repoPath]: [] }));
       } else {
-        setPullRequests(result.prs ?? []);
+        setPullRequestsByRepo((current) => ({
+          ...current,
+          [repoPath]: result.prs ?? []
+        }));
       }
     } catch (error) {
       setPrError(error instanceof Error ? error.message : "Unable to load PRs.");
-      setPullRequests([]);
+      setPullRequestsByRepo((current) => ({ ...current, [repoPath]: [] }));
     } finally {
       setIsLoadingPrs(false);
+      pollingRef.current.inFlight = false;
     }
   };
 
@@ -119,6 +139,26 @@ export const ShellLayout: React.FC = () => {
     setSelectedRepo(repo);
     void loadPullRequests(repo);
   };
+
+  useEffect(() => {
+    if (!selectedRepo) {
+      return undefined;
+    }
+
+    void loadPullRequests(selectedRepo);
+
+    pollingRef.current.intervalId = setInterval(() => {
+      void loadPullRequests(selectedRepo);
+    }, 120000);
+
+    return () => {
+      if (pollingRef.current.intervalId) {
+        clearInterval(pollingRef.current.intervalId);
+      }
+      pollingRef.current.intervalId = null;
+      pollingRef.current.inFlight = false;
+    };
+  }, [selectedRepo]);
 
   return (
     <div className="shell">
@@ -188,8 +228,20 @@ export const ShellLayout: React.FC = () => {
       <main className="main">
         <section className="list">
           <header>
-            <h1>Pull Requests</h1>
-            <p>Monitor CI status and suggested fixes.</p>
+            <div className="panel-heading">
+              <div>
+                <h1>Pull Requests</h1>
+                <p>Monitor CI status and suggested fixes.</p>
+              </div>
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() => (selectedRepo ? loadPullRequests(selectedRepo) : undefined)}
+                disabled={!selectedRepo || isLoadingPrs}
+              >
+                Refresh
+              </button>
+            </div>
           </header>
           {isLoadingPrs ? (
             <div className="panel-message">Loading pull requests...</div>
