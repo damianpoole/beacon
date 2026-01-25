@@ -12,11 +12,13 @@
     "start": "electron ."
   },
   "dependencies": {
+    "better-sqlite3": "^11.1.0",
     "electron": "^40.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
     "@types/node": "^20.11.10",
     "@types/react": "^18.2.40",
     "@types/react-dom": "^18.2.17",

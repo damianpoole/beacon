@@ -41,7 +41,7 @@
         "DB stores pointer to diff file location",
         "CRUD operations for repos and PRs succeed"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "auth",
