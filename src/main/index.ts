@@ -16,6 +16,13 @@ type AuthStatus = {
 };
 
 type NormalizeResult = { path?: string; error?: string };
+type PullRequest = {
+  number: number;
+  title: string;
+  branch: string;
+  status: string;
+};
+type PullRequestResult = { prs?: PullRequest[]; error?: string };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -111,6 +118,74 @@ const main = async (): Promise<void> => {
         }
 
         return { path: resolved };
+      }
+    );
+
+    ipcMain.handle(
+      "repo:list-prs",
+      async (_event, repoPath: string): Promise<PullRequestResult> => {
+        if (!repoPath) {
+          return { error: "Select a repository first." };
+        }
+
+        if (!existsSync(repoPath)) {
+          return { error: "Repository path no longer exists." };
+        }
+
+        try {
+          const stats = statSync(repoPath);
+          if (!stats.isDirectory()) {
+            return { error: "Repository path is not a directory." };
+          }
+        } catch (error) {
+          return {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Unable to read repository path."
+          };
+        }
+
+        try {
+          const { stdout } = await execFileAsync(
+            "gh",
+            [
+              "pr",
+              "list",
+              "--author",
+              "@me",
+              "--state",
+              "all",
+              "--json",
+              "number,title,headRefName,state"
+            ],
+            { cwd: repoPath }
+          );
+
+          const parsed: Array<{
+            number: number;
+            title: string;
+            headRefName: string;
+            state: string;
+          }> = JSON.parse(stdout || "[]");
+
+          const prs = parsed.map((pr) => ({
+            number: pr.number,
+            title: pr.title,
+            branch: pr.headRefName,
+            status: pr.state
+          }));
+
+          return { prs };
+        } catch (error) {
+          const details =
+            error instanceof Error
+              ? error.message
+              : "Unable to fetch pull requests.";
+          return {
+            error: `Failed to fetch PRs. (${details})`
+          };
+        }
       }
     );
 

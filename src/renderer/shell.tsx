@@ -16,6 +16,12 @@ export const ShellLayout: React.FC = () => {
   const [repoInput, setRepoInput] = useState("");
   const [repoPaths, setRepoPaths] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [prError, setPrError] = useState<string | null>(null);
+  const [pullRequests, setPullRequests] = useState<
+    Array<{ number: number; title: string; branch: string; status: string }>
+  >([]);
+  const [isLoadingPrs, setIsLoadingPrs] = useState(false);
   const [authStatus, setAuthStatus] = useState<
     | { state: "loading" }
     | { state: "ready"; authenticated: boolean; username?: string; message: string }
@@ -60,6 +66,7 @@ export const ShellLayout: React.FC = () => {
   }, []);
 
   const hasRepos = repoPaths.length > 0;
+  const hasPrs = pullRequests.length > 0;
   const handleAddRepo = async () => {
     const result = await window.beacon.normalizeRepoPath(repoInput);
 
@@ -78,7 +85,39 @@ export const ShellLayout: React.FC = () => {
       });
       setRepoInput("");
       setErrorMessage(null);
+      setSelectedRepo((current) => current ?? normalizedPath);
     }
+  };
+
+  const loadPullRequests = async (repoPath: string) => {
+    const listClient = window.beacon?.listPullRequests;
+    if (!listClient) {
+      setPrError("Pull request API unavailable.");
+      setPullRequests([]);
+      return;
+    }
+
+    setIsLoadingPrs(true);
+    setPrError(null);
+    try {
+      const result = await listClient(repoPath);
+      if (result.error) {
+        setPrError(result.error);
+        setPullRequests([]);
+      } else {
+        setPullRequests(result.prs ?? []);
+      }
+    } catch (error) {
+      setPrError(error instanceof Error ? error.message : "Unable to load PRs.");
+      setPullRequests([]);
+    } finally {
+      setIsLoadingPrs(false);
+    }
+  };
+
+  const handleSelectRepo = (repo: string) => {
+    setSelectedRepo(repo);
+    void loadPullRequests(repo);
   };
 
   return (
@@ -123,7 +162,19 @@ export const ShellLayout: React.FC = () => {
           {hasRepos ? (
             <ul>
               {repoPaths.map((repo) => (
-                <li key={repo}>{repo}</li>
+                <li key={repo}>
+                  <button
+                    type="button"
+                    className={
+                      selectedRepo === repo
+                        ? "repo-select active"
+                        : "repo-select"
+                    }
+                    onClick={() => handleSelectRepo(repo)}
+                  >
+                    {repo}
+                  </button>
+                </li>
               ))}
             </ul>
           ) : (
@@ -140,10 +191,42 @@ export const ShellLayout: React.FC = () => {
             <h1>Pull Requests</h1>
             <p>Monitor CI status and suggested fixes.</p>
           </header>
-          <EmptyState
-            title="No PRs to show"
-            description="Select a repo to see its open pull requests."
-          />
+          {isLoadingPrs ? (
+            <div className="panel-message">Loading pull requests...</div>
+          ) : prError ? (
+            <div className="panel-message error" role="alert">
+              {prError}
+            </div>
+          ) : selectedRepo ? (
+            hasPrs ? (
+              <ul className="pr-list">
+                {pullRequests.map((pr) => (
+                  <li key={pr.number} className="pr-card">
+                    <div className="pr-title">
+                      <span className="pr-number">#{pr.number}</span>
+                      {pr.title}
+                    </div>
+                    <div className="pr-meta">
+                      <span>{pr.branch}</span>
+                      <span className={`pr-status ${pr.status.toLowerCase()}`}>
+                        {pr.status}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                title="No PRs to show"
+                description="No pull requests found for this repository."
+              />
+            )
+          ) : (
+            <EmptyState
+              title="No PRs to show"
+              description="Select a repo to see its open pull requests."
+            />
+          )}
         </section>
         <section className="detail">
           <header>

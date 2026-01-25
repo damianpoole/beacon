@@ -3,3 +3,4 @@
 2026-01-25: Added repo path input flow with main-process normalization and validation, plus UI list + error feedback and styling. Updated tests and marked repo-management task complete; typecheck/test pass.
 2026-01-25: Wired gh auth status via main process IPC, exposed preload helper, and surfaced auth panel in UI with updated tests. Marked auth task complete; pnpm typecheck/test pass.
 2026-01-25: Fixed preload failures by moving Node-dependent repo normalization into main-process IPC, leaving preload as an IPC-only bridge. Updated renderer types and async usage to match; rebuild restores auth panel.
+2026-01-25: Implemented PR discovery via gh CLI IPC, wired repo selection + PR list UI with error/loading states, and updated styles/tests. Marked PR discovery task complete; pnpm typecheck/test pass.

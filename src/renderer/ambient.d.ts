@@ -13,6 +13,15 @@ declare global {
         username?: string;
         message: string;
       }>;
+      listPullRequests: (repoPath: string) => Promise<{
+        prs?: Array<{
+          number: number;
+          title: string;
+          branch: string;
+          status: string;
+        }>;
+        error?: string;
+      }>;
     };
   }
 }

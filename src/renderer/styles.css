@@ -172,12 +172,107 @@ body {
 }
 
 .repo-list li {
+  margin: 0;
+}
+
+.repo-select {
+  width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
   background: #f3ebe1;
   font-size: 13px;
   color: #3c3f44;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
   word-break: break-all;
+}
+
+.repo-select:hover {
+  border-color: rgba(123, 154, 139, 0.6);
+}
+
+.repo-select.active {
+  border-color: #7b9a8b;
+  background: #e3eee8;
+  box-shadow: inset 0 0 0 1px rgba(123, 154, 139, 0.4);
+}
+
+.panel-message {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f3ebe1;
+  color: #4b4f55;
+  font-size: 14px;
+}
+
+.panel-message.error {
+  background: rgba(176, 60, 60, 0.1);
+  color: #8b2b2b;
+}
+
+.pr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pr-card {
+  background: #f3ebe1;
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid rgba(190, 173, 156, 0.5);
+}
+
+.pr-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2228;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.pr-number {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6a6f75;
+}
+
+.pr-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #5b5f66;
+}
+
+.pr-status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  background: rgba(47, 75, 63, 0.12);
+  color: #2f4b3f;
+}
+
+.pr-status.open {
+  background: rgba(47, 75, 63, 0.12);
+  color: #2f4b3f;
+}
+
+.pr-status.closed,
+.pr-status.merged {
+  background: rgba(82, 95, 116, 0.12);
+  color: #3f4b5a;
 }
 
 .sr-only {

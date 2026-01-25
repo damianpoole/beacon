@@ -61,7 +61,7 @@
         "PR list includes number, title, branch, and status",
         "Failure to fetch PRs is handled with error messaging"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "pr-monitoring",
