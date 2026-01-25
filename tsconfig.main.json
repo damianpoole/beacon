@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist/main",
+    "rootDir": "src/main"
+  },
+  "include": ["src/main/**/*"],
+  "exclude": ["src/main/preload.ts"]
+}

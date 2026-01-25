@@ -23,9 +23,20 @@ export const ShellLayout: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    const authClient = window.beacon?.getAuthStatus;
 
-    window.beacon
-      .getAuthStatus()
+    if (!authClient) {
+      setAuthStatus({
+        state: "ready",
+        authenticated: false,
+        message: "Auth status unavailable."
+      });
+      return () => {
+        active = false;
+      };
+    }
+
+    authClient()
       .then((status) => {
         if (!active) {
           return;
@@ -49,8 +60,8 @@ export const ShellLayout: React.FC = () => {
   }, []);
 
   const hasRepos = repoPaths.length > 0;
-  const handleAddRepo = () => {
-    const result = window.beacon.normalizeRepoPath(repoInput);
+  const handleAddRepo = async () => {
+    const result = await window.beacon.normalizeRepoPath(repoInput);
 
     if (result.error) {
       setErrorMessage(result.error);

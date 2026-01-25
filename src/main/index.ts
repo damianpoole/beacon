@@ -1,7 +1,9 @@
 import { BrowserWindow, app, ipcMain } from "electron";
 import { execFile } from "node:child_process";
+import { existsSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
 
@@ -12,6 +14,8 @@ type AuthStatus = {
   username?: string;
   message: string;
 };
+
+type NormalizeResult = { path?: string; error?: string };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,7 +28,7 @@ const createMainWindow = (): BrowserWindow => {
     show: false,
     backgroundColor: "#efe9e1",
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -75,6 +79,40 @@ const main = async (): Promise<void> => {
         };
       }
     });
+
+    ipcMain.handle(
+      "repo:normalize",
+      async (_event, input: string): Promise<NormalizeResult> => {
+        const trimmed = input.trim();
+
+        if (!trimmed) {
+          return { error: "Enter a repository path." };
+        }
+
+        const expanded =
+          trimmed === "~" || trimmed.startsWith("~/")
+            ? join(homedir(), trimmed.slice(2))
+            : trimmed;
+        const resolved = resolve(expanded);
+
+        if (!existsSync(resolved)) {
+          return { error: "Path does not exist." };
+        }
+
+        try {
+          const stats = statSync(resolved);
+          if (!stats.isDirectory()) {
+            return { error: "Path is not a directory." };
+          }
+        } catch (error) {
+          return {
+            error: error instanceof Error ? error.message : "Unable to read path."
+          };
+        }
+
+        return { path: resolved };
+      }
+    );
 
     createMainWindow();
 
