@@ -13,3 +13,4 @@
 2026-01-26: Extracted repo path normalization into reusable helper, added unit tests for empty/missing/file/dir paths, and updated quality task notes; pnpm typecheck/test pass.
 2026-01-26: Wired latest suggestion diff retrieval from storage into new IPC handler, exposed it in preload/renderer, and added UI panel to load and display suggestion diffs with summary/run metadata. Updated ui-diff task status.
 2026-01-26: Added unified diff apply pipeline with main-process patch parser/applier, IPC + preload bridge, and UI apply action with feedback. Marked ui-apply task complete.
+2026-01-26: Reviewed apply-patch feature as highest priority; confirmed unified diff parser, patch application with conflict checks, and no auto-commit behavior already implemented; marked apply-patch task complete.

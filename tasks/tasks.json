@@ -199,7 +199,7 @@
         "Conflicts are detected and reported",
         "Apply action never commits or pushes"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "quality",
