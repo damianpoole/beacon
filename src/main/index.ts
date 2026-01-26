@@ -1,12 +1,12 @@
 import { BrowserWindow, app, ipcMain } from "electron";
 import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
 import { classifyFailure } from "./classifier.js";
+import { normalizeRepoPath } from "./repo-path.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -130,36 +130,8 @@ const main = async (): Promise<void> => {
 
     ipcMain.handle(
       "repo:normalize",
-      async (_event, input: string): Promise<NormalizeResult> => {
-        const trimmed = input.trim();
-
-        if (!trimmed) {
-          return { error: "Enter a repository path." };
-        }
-
-        const expanded =
-          trimmed === "~" || trimmed.startsWith("~/")
-            ? join(homedir(), trimmed.slice(2))
-            : trimmed;
-        const resolved = resolve(expanded);
-
-        if (!existsSync(resolved)) {
-          return { error: "Path does not exist." };
-        }
-
-        try {
-          const stats = statSync(resolved);
-          if (!stats.isDirectory()) {
-            return { error: "Path is not a directory." };
-          }
-        } catch (error) {
-          return {
-            error: error instanceof Error ? error.message : "Unable to read path."
-          };
-        }
-
-        return { path: resolved };
-      }
+      async (_event, input: string): Promise<NormalizeResult> =>
+        normalizeRepoPath(input)
     );
 
     ipcMain.handle(

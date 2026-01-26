@@ -10,3 +10,4 @@
 2026-01-25: Added PR list badges for actionable vs infra/needs-review states using classification data, wired badges into list layout styles, and marked ui-prs task complete; pnpm typecheck/test pass.
 2026-01-25: Implemented SQLite-backed storage with repo/PR/run/suggestion schema plus diff file persistence, added tests for CRUD and diff storage, and updated storage task; pnpm typecheck/test pass after approving better-sqlite3 builds.
 2026-01-26: Added storage helper to load the latest suggestion diff from disk + DB and covered it with a new unit test; noted progress in quality tasks.
+2026-01-26: Extracted repo path normalization into reusable helper, added unit tests for empty/missing/file/dir paths, and updated quality task notes; pnpm typecheck/test pass.
