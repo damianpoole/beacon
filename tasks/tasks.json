@@ -211,7 +211,7 @@
         "Diff storage loader has unit tests"
       ],
       "passes": false,
-      "notes": "Added repo path normalization test and storage test for loading latest suggestion diff. Remaining items pending."
+      "notes": "Added repo path normalization test and storage test for loading latest suggestion diff. Added polling controller unit tests; classification tests still pending."
     },
     {
       "category": "docs",

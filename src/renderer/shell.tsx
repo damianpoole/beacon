@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPollingController } from "./polling-controller.js";
 
 const EmptyState: React.FC<{ title: string; description: string }> = ({
   title,
@@ -63,10 +64,14 @@ export const ShellLayout: React.FC = () => {
     | { state: "loading" }
     | { state: "ready"; authenticated: boolean; username?: string; message: string }
   >({ state: "loading" });
-  const pollingRef = useRef<{ intervalId: ReturnType<typeof setInterval> | null; inFlight: boolean }>({
-    intervalId: null,
-    inFlight: false
-  });
+  const pollingRef = useRef(
+    createPollingController(async () => {
+      if (!selectedRepo) {
+        return;
+      }
+      await loadPullRequests(selectedRepo);
+    })
+  );
 
   useEffect(() => {
     let active = true;
@@ -156,9 +161,6 @@ export const ShellLayout: React.FC = () => {
   };
 
   const loadPullRequests = async (repoPath: string) => {
-    if (pollingRef.current.inFlight) {
-      return;
-    }
     const listClient = window.beacon?.listPullRequests;
     if (!listClient) {
       setPrError("Pull request API unavailable.");
@@ -168,7 +170,6 @@ export const ShellLayout: React.FC = () => {
 
     setIsLoadingPrs(true);
     setPrError(null);
-    pollingRef.current.inFlight = true;
     try {
       const result = await listClient(repoPath);
       if (result.error) {
@@ -185,7 +186,6 @@ export const ShellLayout: React.FC = () => {
       setPullRequestsByRepo((current) => ({ ...current, [repoPath]: [] }));
     } finally {
       setIsLoadingPrs(false);
-      pollingRef.current.inFlight = false;
     }
   };
 
@@ -196,22 +196,22 @@ export const ShellLayout: React.FC = () => {
   };
 
   useEffect(() => {
+    pollingRef.current.setHandler(async () => {
+      if (!selectedRepo) {
+        return;
+      }
+      await loadPullRequests(selectedRepo);
+    });
+
     if (!selectedRepo) {
+      pollingRef.current.stop();
       return undefined;
     }
 
-    void loadPullRequests(selectedRepo);
-
-    pollingRef.current.intervalId = setInterval(() => {
-      void loadPullRequests(selectedRepo);
-    }, 120000);
+    pollingRef.current.start(120000);
 
     return () => {
-      if (pollingRef.current.intervalId) {
-        clearInterval(pollingRef.current.intervalId);
-      }
-      pollingRef.current.intervalId = null;
-      pollingRef.current.inFlight = false;
+      pollingRef.current.stop();
     };
   }, [selectedRepo]);
 

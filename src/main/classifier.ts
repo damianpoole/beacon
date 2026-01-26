@@ -51,8 +51,8 @@ const codeKeywords = [
   "expected",
   "snapshot",
   "stack trace",
-  "failed", 
-  "error" 
+  "failed",
+  "error"
 ];
 
 const normalize = (value: string): string => value.toLowerCase();
