@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -17,6 +17,15 @@ type PullRequestRecord = {
   branch: string;
   status: string;
   updatedAt: string;
+};
+
+type SuggestionRecord = {
+  diffId: string;
+  diffPath: string;
+  summary: string | null;
+  runId: number | null;
+  createdAt: string;
+  diff: string;
 };
 
 type StorageOptions = {
@@ -161,5 +170,31 @@ export class Storage {
     );
     insert.run(prId, runId ?? null, diffId, diffPath, summary ?? null, createdAt);
     return { diffId, diffPath };
+  }
+
+  getLatestSuggestion(prId: number): SuggestionRecord | null {
+    const stmt = this.db.prepare(
+      "SELECT diff_id as diffId, diff_path as diffPath, summary, run_id as runId, created_at as createdAt FROM suggestions WHERE pr_id = ? ORDER BY created_at DESC LIMIT 1"
+    );
+    const row = stmt.get(prId) as
+      | {
+          diffId: string;
+          diffPath: string;
+          summary: string | null;
+          runId: number | null;
+          createdAt: string;
+        }
+      | undefined;
+    if (!row) {
+      return null;
+    }
+    let diff = "";
+    try {
+      diff = readFileSync(row.diffPath, "utf8");
+    } catch (error) {
+      const details = error instanceof Error ? error.message : "Unable to read diff.";
+      throw new Error(`Failed to read suggestion diff. (${details})`);
+    }
+    return { ...row, diff };
   }
 }

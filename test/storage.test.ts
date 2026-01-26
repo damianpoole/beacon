@@ -49,4 +49,21 @@ describe("storage", () => {
     expect(result.diffPath.startsWith(baseDir)).toBe(true);
     storage.close();
   });
+
+  it("loads latest suggestion diff for a PR", () => {
+    const { storage } = createStorage();
+    const pr = storage.upsertPullRequest("/tmp/echo", {
+      number: 77,
+      title: "Refine docs",
+      branch: "docs/refine",
+      status: "OPEN"
+    });
+    storage.saveSuggestionDiff(pr.id, "diff --git a/x b/y\n", 123, "Refine docs");
+    const latest = storage.getLatestSuggestion(pr.id);
+    expect(latest).not.toBeNull();
+    expect(latest?.diff).toContain("diff --git");
+    expect(latest?.runId).toBe(123);
+    expect(latest?.summary).toBe("Refine docs");
+    storage.close();
+  });
 });

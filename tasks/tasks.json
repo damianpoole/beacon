@@ -210,7 +210,8 @@
         "Failure classifier has unit tests",
         "Diff storage loader has unit tests"
       ],
-      "passes": false
+      "passes": false,
+      "notes": "Added storage test for loading latest suggestion diff. Remaining items pending."
     },
     {
       "category": "docs",
