@@ -105,7 +105,7 @@
         "Tool for reading local file content is available",
         "Model receives system prompt aligned with fix-only scope"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "copilot",

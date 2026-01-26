@@ -56,6 +56,18 @@ declare global {
         errors?: string[];
         error?: string;
       }>;
+      startCopilotSession: (model: string) => Promise<
+        | {
+            sessionId: number;
+          }
+        | {
+            error: string;
+          }
+      >;
+      stopCopilotSession: () => Promise<{
+        stopped: boolean;
+        error?: string;
+      }>;
     };
   }
 }

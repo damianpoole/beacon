@@ -6,9 +6,10 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
 import { applyUnifiedDiff } from "./apply-patch.js";
-import { Storage } from "./storage.js";
 import { classifyFailure } from "./classifier.js";
+import { createCopilotSession } from "./copilot.js";
 import { normalizeRepoPath } from "./repo-path.js";
+import { Storage } from "./storage.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -55,6 +56,13 @@ type SuggestionResult = {
 type ApplyPatchResult = {
   appliedFiles?: string[];
   errors?: string[];
+  error?: string;
+};
+type CopilotSessionInfo = {
+  sessionId: number;
+};
+type CopilotStopResult = {
+  stopped: boolean;
   error?: string;
 };
 
@@ -117,8 +125,23 @@ const main = async (): Promise<void> => {
     logInfo("Electron app ready");
 
     const storage = new Storage({ baseDir: app.getPath("userData") });
+    let copilotSession: Awaited<ReturnType<typeof createCopilotSession>> | null =
+      null;
+    let copilotSessionId = 0;
 
     app.on("will-quit", () => {
+      if (copilotSession) {
+        void copilotSession
+          .stop()
+          .catch((error) => {
+            logError("Copilot session stop failed", {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          })
+          .finally(() => {
+            copilotSession = null;
+          });
+      }
       storage.close();
       logInfo("App will quit");
     });
@@ -290,13 +313,13 @@ const main = async (): Promise<void> => {
             { cwd: repoPath, maxBuffer: 10 * 1024 * 1024 }
           );
 
-           const trimmedLog = logOutput.trimEnd();
-           return {
-             log: trimmedLog,
-             runId,
-             checkName: failingCheck.name,
-             classification: classifyFailure(trimmedLog)
-           };
+          const trimmedLog = logOutput.trimEnd();
+          return {
+            log: trimmedLog,
+            runId,
+            checkName: failingCheck.name,
+            classification: classifyFailure(trimmedLog)
+          };
         } catch (error) {
           const details =
             error instanceof Error
@@ -304,6 +327,48 @@ const main = async (): Promise<void> => {
               : "Unable to fetch failed run logs.";
           logError("Failed to fetch run logs", { error: details, prNumber });
           return { error: `Failed to fetch run logs. (${details})` };
+        }
+      }
+    );
+
+    ipcMain.handle(
+      "copilot:start",
+      async (_event, model: string): Promise<CopilotSessionInfo | { error: string }> => {
+        try {
+          if (copilotSession) {
+            await copilotSession.stop();
+            copilotSession = null;
+          }
+          const session = await createCopilotSession(model);
+          copilotSession = session;
+          copilotSessionId += 1;
+          logInfo("Copilot session started", { sessionId: copilotSessionId });
+          return { sessionId: copilotSessionId };
+        } catch (error) {
+          const details =
+            error instanceof Error ? error.message : "Unable to start Copilot session.";
+          logError("Copilot session start failed", { error: details });
+          return { error: details };
+        }
+      }
+    );
+
+    ipcMain.handle(
+      "copilot:stop",
+      async (): Promise<CopilotStopResult> => {
+        if (!copilotSession) {
+          return { stopped: true };
+        }
+        try {
+          await copilotSession.stop();
+          copilotSession = null;
+          logInfo("Copilot session stopped", { sessionId: copilotSessionId });
+          return { stopped: true };
+        } catch (error) {
+          const details =
+            error instanceof Error ? error.message : "Unable to stop Copilot session.";
+          logError("Copilot session stop failed", { error: details });
+          return { stopped: false, error: details };
         }
       }
     );

@@ -16,3 +16,4 @@
 2026-01-26: Reviewed apply-patch feature as highest priority; confirmed unified diff parser, patch application with conflict checks, and no auto-commit behavior already implemented; marked apply-patch task complete.
 2026-01-26: Added polling controller helper to prevent overlapping PR refreshes, refactored shell polling to use it, and introduced unit tests for polling behavior; updated quality task notes.
 2026-01-26: Added unit tests for failure classifier heuristics (empty, infra, code, mixed, unknown) and marked quality task complete.
+2026-01-26: Integrated Copilot SDK session startup with tools for CI log fetching and local file reading, added IPC for session start/stop, and marked copilot toolset task complete.

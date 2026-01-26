@@ -34,6 +34,8 @@ type ApplyPatchResult = {
   errors?: string[];
   error?: string;
 };
+type CopilotSessionInfo = { sessionId: number };
+type CopilotStopResult = { stopped: boolean; error?: string };
 
 contextBridge.exposeInMainWorld("beacon", {
   version: "0.1",
@@ -56,5 +58,9 @@ contextBridge.exposeInMainWorld("beacon", {
     repoPath: string,
     prNumber: number
   ): Promise<ApplyPatchResult> =>
-    ipcRenderer.invoke("suggestion:apply", repoPath, prNumber)
+    ipcRenderer.invoke("suggestion:apply", repoPath, prNumber),
+  startCopilotSession: (model: string): Promise<CopilotSessionInfo | { error: string }> =>
+    ipcRenderer.invoke("copilot:start", model),
+  stopCopilotSession: (): Promise<CopilotStopResult> =>
+    ipcRenderer.invoke("copilot:stop")
 });
