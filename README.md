@@ -54,22 +54,22 @@ In progress / planned:
 Install dependencies and run the app in dev mode:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Build and run the Electron app:
+Build and run the Electron app (start handles native rebuilds for Electron):
 
 ```bash
-npm run build
-npm run start
+pnpm build
+pnpm start
 ```
 
 Typecheck and tests:
 
 ```bash
-npm run typecheck
-npm run test
+pnpm typecheck
+pnpm test
 ```
 
 ## Copilot SDK Notes
