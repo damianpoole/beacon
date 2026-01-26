@@ -48,6 +48,14 @@ declare global {
         createdAt?: string;
         error?: string;
       }>;
+      applySuggestion: (
+        repoPath: string,
+        prNumber: number
+      ) => Promise<{
+        appliedFiles?: string[];
+        errors?: string[];
+        error?: string;
+      }>;
     };
   }
 }

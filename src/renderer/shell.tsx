@@ -57,6 +57,8 @@ export const ShellLayout: React.FC = () => {
   const [isLoadingPrs, setIsLoadingPrs] = useState(false);
   const [isLoadingLog, setIsLoadingLog] = useState(false);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+  const [isApplyingSuggestion, setIsApplyingSuggestion] = useState(false);
+  const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<
     | { state: "loading" }
     | { state: "ready"; authenticated: boolean; username?: string; message: string }
@@ -216,6 +218,7 @@ export const ShellLayout: React.FC = () => {
   const handleSelectPr = (prNumber: number) => {
     setSelectedPrNumber(prNumber);
     setLogError(null);
+    setApplyMessage(null);
   };
 
   const handleFetchFailedLog = async () => {
@@ -278,6 +281,7 @@ export const ShellLayout: React.FC = () => {
 
     setIsLoadingSuggestion(true);
     setLogError(null);
+    setApplyMessage(null);
     try {
       const result = await suggestionClient(selectedRepo, selectedPullRequest.number);
       if (result.error) {
@@ -306,6 +310,51 @@ export const ShellLayout: React.FC = () => {
       );
     } finally {
       setIsLoadingSuggestion(false);
+    }
+  };
+
+  const handleApplySuggestion = async () => {
+    if (!selectedRepo || !selectedPullRequest) {
+      return;
+    }
+
+    const applyClient = window.beacon?.applySuggestion;
+    if (!applyClient) {
+      setApplyMessage("Apply API unavailable.");
+      return;
+    }
+
+    setIsApplyingSuggestion(true);
+    setLogError(null);
+    setApplyMessage(null);
+    try {
+      const result = await applyClient(selectedRepo, selectedPullRequest.number);
+      if (result.error) {
+        setApplyMessage(result.error);
+        return;
+      }
+
+      if (result.errors && result.errors.length > 0) {
+        setApplyMessage(result.errors.join(" "));
+        return;
+      }
+
+      if (!result.appliedFiles || result.appliedFiles.length === 0) {
+        setApplyMessage("No files were updated.");
+        return;
+      }
+
+      setApplyMessage(
+        `Applied to ${result.appliedFiles.length} file${
+          result.appliedFiles.length === 1 ? "" : "s"
+        }.`
+      );
+    } catch (error) {
+      setApplyMessage(
+        error instanceof Error ? error.message : "Unable to apply suggestion."
+      );
+    } finally {
+      setIsApplyingSuggestion(false);
     }
   };
 
@@ -484,8 +533,21 @@ export const ShellLayout: React.FC = () => {
                       ? "Loading suggestion..."
                       : "Load suggestion"}
                   </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={handleApplySuggestion}
+                    disabled={isApplyingSuggestion || !selectedSuggestion}
+                  >
+                    {isApplyingSuggestion ? "Applying..." : "Apply suggestion"}
+                  </button>
                 </div>
               </div>
+              {applyMessage ? (
+                <div className="panel-message" role="status">
+                  {applyMessage}
+                </div>
+              ) : null}
               {logError ? (
                 <div className="panel-message error" role="alert">
                   {logError}

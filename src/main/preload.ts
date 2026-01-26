@@ -29,6 +29,11 @@ type SuggestionResult = {
   createdAt?: string;
   error?: string;
 };
+type ApplyPatchResult = {
+  appliedFiles?: string[];
+  errors?: string[];
+  error?: string;
+};
 
 contextBridge.exposeInMainWorld("beacon", {
   version: "0.1",
@@ -46,5 +51,10 @@ contextBridge.exposeInMainWorld("beacon", {
     repoPath: string,
     prNumber: number
   ): Promise<SuggestionResult> =>
-    ipcRenderer.invoke("suggestion:latest", repoPath, prNumber)
+    ipcRenderer.invoke("suggestion:latest", repoPath, prNumber),
+  applySuggestion: (
+    repoPath: string,
+    prNumber: number
+  ): Promise<ApplyPatchResult> =>
+    ipcRenderer.invoke("suggestion:apply", repoPath, prNumber)
 });

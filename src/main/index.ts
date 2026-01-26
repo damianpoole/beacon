@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
+import { applyUnifiedDiff } from "./apply-patch.js";
 import { Storage } from "./storage.js";
 import { classifyFailure } from "./classifier.js";
 import { normalizeRepoPath } from "./repo-path.js";
@@ -49,6 +50,11 @@ type SuggestionResult = {
   summary?: string | null;
   runId?: number | null;
   createdAt?: string;
+  error?: string;
+};
+type ApplyPatchResult = {
+  appliedFiles?: string[];
+  errors?: string[];
   error?: string;
 };
 
@@ -342,6 +348,51 @@ const main = async (): Promise<void> => {
             prNumber
           });
           return { error: `Failed to load suggestion. (${details})` };
+        }
+      }
+    );
+
+    ipcMain.handle(
+      "suggestion:apply",
+      async (
+        _event,
+        repoPath: string,
+        prNumber: number
+      ): Promise<ApplyPatchResult> => {
+        if (!repoPath) {
+          return { error: "Select a repository first." };
+        }
+
+        if (!Number.isFinite(prNumber) || prNumber <= 0) {
+          return { error: "Select a pull request first." };
+        }
+
+        try {
+          const suggestion = storage.getLatestSuggestionForPullRequest(
+            repoPath,
+            prNumber
+          );
+          if (!suggestion) {
+            return { error: "No suggestion available yet." };
+          }
+
+          const result = applyUnifiedDiff(repoPath, suggestion.diff);
+          if (result.errors.length > 0) {
+            return { errors: result.errors };
+          }
+
+          return { appliedFiles: result.appliedFiles };
+        } catch (error) {
+          const details =
+            error instanceof Error
+              ? error.message
+              : "Unable to apply suggestion.";
+          logError("Failed to apply suggestion", {
+            error: details,
+            repoPath,
+            prNumber
+          });
+          return { error: `Failed to apply suggestion. (${details})` };
         }
       }
     );

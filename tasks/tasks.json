@@ -147,7 +147,7 @@
         "No auto-commit or push occurs",
         "Success/failure feedback is shown"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "settings",
