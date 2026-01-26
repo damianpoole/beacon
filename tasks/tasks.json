@@ -210,8 +210,8 @@
         "Failure classifier has unit tests",
         "Diff storage loader has unit tests"
       ],
-      "passes": false,
-      "notes": "Added repo path normalization test and storage test for loading latest suggestion diff. Added polling controller unit tests; classification tests still pending."
+      "passes": true,
+      "notes": "Added repo path normalization test and storage test for loading latest suggestion diff. Added polling controller unit tests. Added classifier unit tests to cover empty, infra, code, mixed, and unknown logs."
     },
     {
       "category": "docs",
