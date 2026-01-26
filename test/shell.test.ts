@@ -10,6 +10,7 @@ const getShellLabels = () => {
     "GitHub auth",
     "Pull Requests",
     "Refresh",
+    "Load suggestion"
   ];
 };
 
@@ -23,5 +24,6 @@ describe("shell layout", () => {
     expect(getShellLabels()).toContain("GitHub auth");
     expect(getShellLabels()).toContain("Pull Requests");
     expect(getShellLabels()).toContain("Refresh");
+    expect(getShellLabels()).toContain("Load suggestion");
   });
 });

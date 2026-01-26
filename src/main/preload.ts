@@ -22,6 +22,13 @@ type FailedLogResult = {
   };
   error?: string;
 };
+type SuggestionResult = {
+  diff?: string;
+  summary?: string | null;
+  runId?: number | null;
+  createdAt?: string;
+  error?: string;
+};
 
 contextBridge.exposeInMainWorld("beacon", {
   version: "0.1",
@@ -34,5 +41,10 @@ contextBridge.exposeInMainWorld("beacon", {
     repoPath: string,
     prNumber: number
   ): Promise<FailedLogResult> =>
-    ipcRenderer.invoke("ci:failed-log", repoPath, prNumber)
+    ipcRenderer.invoke("ci:failed-log", repoPath, prNumber),
+  getLatestSuggestion: (
+    repoPath: string,
+    prNumber: number
+  ): Promise<SuggestionResult> =>
+    ipcRenderer.invoke("suggestion:latest", repoPath, prNumber)
 });

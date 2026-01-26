@@ -282,6 +282,12 @@ body {
   gap: 12px;
 }
 
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .detail-heading h3 {
   margin: 0 0 6px;
   font-family: "Fraunces", serif;
@@ -470,5 +476,10 @@ body {
 
   .main {
     grid-template-columns: 1fr;
+  }
+
+  .detail-heading {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

@@ -136,7 +136,7 @@
         "Diff panel shows PR and run metadata context",
         "Empty state shown if no suggestion exists"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "ui-apply",

@@ -197,4 +197,23 @@ export class Storage {
     }
     return { ...row, diff };
   }
+
+  getLatestSuggestionForPullRequest(
+    repoPath: string,
+    prNumber: number
+  ): SuggestionRecord | null {
+    const repoRow = this.db.prepare("SELECT id FROM repos WHERE path = ?").get(
+      repoPath
+    ) as { id: number } | undefined;
+    if (!repoRow) {
+      return null;
+    }
+    const prRow = this.db
+      .prepare("SELECT id FROM pull_requests WHERE repo_id = ? AND number = ?")
+      .get(repoRow.id, prNumber) as { id: number } | undefined;
+    if (!prRow) {
+      return null;
+    }
+    return this.getLatestSuggestion(prRow.id);
+  }
 }

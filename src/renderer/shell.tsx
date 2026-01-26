@@ -30,6 +30,12 @@ type FailedLog = {
     matched?: string[];
   };
 };
+type Suggestion = {
+  diff: string;
+  summary?: string | null;
+  runId?: number | null;
+  createdAt?: string;
+};
 
 export const ShellLayout: React.FC = () => {
   const [repoInput, setRepoInput] = useState("");
@@ -45,8 +51,12 @@ export const ShellLayout: React.FC = () => {
   const [failedLogsByPr, setFailedLogsByPr] = useState<
     Record<number, FailedLog>
   >({});
+  const [suggestionsByPr, setSuggestionsByPr] = useState<
+    Record<number, Suggestion>
+  >({});
   const [isLoadingPrs, setIsLoadingPrs] = useState(false);
   const [isLoadingLog, setIsLoadingLog] = useState(false);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [authStatus, setAuthStatus] = useState<
     | { state: "loading" }
     | { state: "ready"; authenticated: boolean; username?: string; message: string }
@@ -102,6 +112,9 @@ export const ShellLayout: React.FC = () => {
     : null;
   const selectedLog = selectedPrNumber
     ? failedLogsByPr[selectedPrNumber] ?? null
+    : null;
+  const selectedSuggestion = selectedPrNumber
+    ? suggestionsByPr[selectedPrNumber] ?? null
     : null;
   const getActionLabel = (classification?: FailedLog["classification"]) => {
     if (!classification) {
@@ -249,6 +262,50 @@ export const ShellLayout: React.FC = () => {
       setLogError(error instanceof Error ? error.message : "Unable to load logs.");
     } finally {
       setIsLoadingLog(false);
+    }
+  };
+
+  const handleFetchSuggestion = async () => {
+    if (!selectedRepo || !selectedPullRequest) {
+      return;
+    }
+
+    const suggestionClient = window.beacon?.getLatestSuggestion;
+    if (!suggestionClient) {
+      setLogError("Suggestion API unavailable.");
+      return;
+    }
+
+    setIsLoadingSuggestion(true);
+    setLogError(null);
+    try {
+      const result = await suggestionClient(selectedRepo, selectedPullRequest.number);
+      if (result.error) {
+        setLogError(result.error);
+        return;
+      }
+
+      const diff = result.diff;
+      if (!diff) {
+        setLogError("No suggestion diff available yet.");
+        return;
+      }
+
+      setSuggestionsByPr((current) => ({
+        ...current,
+        [selectedPullRequest.number]: {
+          diff,
+          summary: result.summary,
+          runId: result.runId,
+          createdAt: result.createdAt
+        }
+      }));
+    } catch (error) {
+      setLogError(
+        error instanceof Error ? error.message : "Unable to load suggestion."
+      );
+    } finally {
+      setIsLoadingSuggestion(false);
     }
   };
 
@@ -408,14 +465,26 @@ export const ShellLayout: React.FC = () => {
                   <h3>PR #{selectedPullRequest.number}</h3>
                   <p>{selectedPullRequest.title}</p>
                 </div>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={handleFetchFailedLog}
-                  disabled={isLoadingLog}
-                >
-                  {isLoadingLog ? "Fetching log..." : "Fetch failed log"}
-                </button>
+                <div className="detail-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={handleFetchFailedLog}
+                    disabled={isLoadingLog}
+                  >
+                    {isLoadingLog ? "Fetching log..." : "Fetch failed log"}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={handleFetchSuggestion}
+                    disabled={isLoadingSuggestion}
+                  >
+                    {isLoadingSuggestion
+                      ? "Loading suggestion..."
+                      : "Load suggestion"}
+                  </button>
+                </div>
               </div>
               {logError ? (
                 <div className="panel-message error" role="alert">
@@ -437,10 +506,26 @@ export const ShellLayout: React.FC = () => {
                   ) : null}
                   <pre className="log-output">{selectedLog.log}</pre>
                 </div>
+              ) : selectedSuggestion ? (
+                <div className="log-panel">
+                  <div className="log-meta">
+                    <span>Suggestion diff</span>
+                    {selectedSuggestion.runId ? (
+                      <span>Run {selectedSuggestion.runId}</span>
+                    ) : null}
+                  </div>
+                  {selectedSuggestion.summary ? (
+                    <div className="log-classification">
+                      <span className="classification-tag">Summary</span>
+                      <p>{selectedSuggestion.summary}</p>
+                    </div>
+                  ) : null}
+                  <pre className="log-output">{selectedSuggestion.diff}</pre>
+                </div>
               ) : (
                 <EmptyState
                   title="No logs yet"
-                  description="Fetch failed logs to see details here."
+                  description="Fetch failed logs or suggestions to see details here."
                 />
               )}
             </div>

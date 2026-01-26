@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { logError, logInfo } from "./logging.js";
+import { Storage } from "./storage.js";
 import { classifyFailure } from "./classifier.js";
 import { normalizeRepoPath } from "./repo-path.js";
 
@@ -41,6 +42,13 @@ type FailedLogResult = {
     reason: string;
     matched?: string[];
   };
+  error?: string;
+};
+type SuggestionResult = {
+  diff?: string;
+  summary?: string | null;
+  runId?: number | null;
+  createdAt?: string;
   error?: string;
 };
 
@@ -101,6 +109,13 @@ const main = async (): Promise<void> => {
   try {
     await app.whenReady();
     logInfo("Electron app ready");
+
+    const storage = new Storage({ baseDir: app.getPath("userData") });
+
+    app.on("will-quit", () => {
+      storage.close();
+      logInfo("App will quit");
+    });
 
     ipcMain.handle("auth:status", async (): Promise<AuthStatus> => {
       try {
@@ -287,6 +302,50 @@ const main = async (): Promise<void> => {
       }
     );
 
+    ipcMain.handle(
+      "suggestion:latest",
+      async (
+        _event,
+        repoPath: string,
+        prNumber: number
+      ): Promise<SuggestionResult> => {
+        if (!repoPath) {
+          return { error: "Select a repository first." };
+        }
+
+        if (!Number.isFinite(prNumber) || prNumber <= 0) {
+          return { error: "Select a pull request first." };
+        }
+
+        try {
+          const suggestion = storage.getLatestSuggestionForPullRequest(
+            repoPath,
+            prNumber
+          );
+          if (!suggestion) {
+            return { error: "No suggestion available yet." };
+          }
+          return {
+            diff: suggestion.diff,
+            summary: suggestion.summary,
+            runId: suggestion.runId,
+            createdAt: suggestion.createdAt
+          };
+        } catch (error) {
+          const details =
+            error instanceof Error
+              ? error.message
+              : "Unable to load suggestion.";
+          logError("Failed to load suggestion", {
+            error: details,
+            repoPath,
+            prNumber
+          });
+          return { error: `Failed to load suggestion. (${details})` };
+        }
+      }
+    );
+
     createMainWindow();
 
     app.on("activate", () => {
@@ -298,10 +357,6 @@ const main = async (): Promise<void> => {
     app.on("window-all-closed", () => {
       logInfo("All windows closed");
       app.quit();
-    });
-
-    app.on("will-quit", () => {
-      logInfo("App will quit");
     });
   } catch (error) {
     logError("Main process failed to start", {
