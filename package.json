@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build && tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json && node scripts/rename-preload.cjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "pnpm rebuild:node && vitest run",
+    "rebuild:node": "pnpm rebuild better-sqlite3",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3 -v 29.4.6",
     "start": "pnpm rebuild:electron && electron ."
   },
