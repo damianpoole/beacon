@@ -116,7 +116,7 @@
         "Suggestion metadata includes PR/run references",
         "Non-code failures skip suggestion generation"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "ui-prs",

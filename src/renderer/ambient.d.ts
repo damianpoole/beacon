@@ -38,6 +38,16 @@ declare global {
         };
         error?: string;
       }>;
+      generateSuggestion: (
+        repoPath: string,
+        prNumber: number
+      ) => Promise<{
+        diff?: string;
+        summary?: string | null;
+        runId?: number | null;
+        createdAt?: string;
+        error?: string;
+      }>;
       getLatestSuggestion: (
         repoPath: string,
         prNumber: number

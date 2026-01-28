@@ -172,6 +172,33 @@ export class Storage {
     return { diffId, diffPath };
   }
 
+  saveSuggestionForPullRequest(
+    repoPath: string,
+    prNumber: number,
+    diff: string,
+    runId?: number,
+    summary?: string
+  ): SuggestionRecord {
+    const repoRow = this.db.prepare("SELECT id FROM repos WHERE path = ?").get(
+      repoPath
+    ) as { id: number } | undefined;
+    if (!repoRow) {
+      throw new Error("Repository not found for suggestion.");
+    }
+    const prRow = this.db
+      .prepare("SELECT id FROM pull_requests WHERE repo_id = ? AND number = ?")
+      .get(repoRow.id, prNumber) as { id: number } | undefined;
+    if (!prRow) {
+      throw new Error("Pull request not found for suggestion.");
+    }
+    this.saveSuggestionDiff(prRow.id, diff, runId, summary);
+    const latest = this.getLatestSuggestion(prRow.id);
+    if (!latest) {
+      throw new Error("Failed to load saved suggestion.");
+    }
+    return latest;
+  }
+
   getLatestSuggestion(prId: number): SuggestionRecord | null {
     const stmt = this.db.prepare(
       "SELECT diff_id as diffId, diff_path as diffPath, summary, run_id as runId, created_at as createdAt FROM suggestions WHERE pr_id = ? ORDER BY created_at DESC LIMIT 1"

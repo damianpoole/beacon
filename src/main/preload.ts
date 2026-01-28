@@ -49,6 +49,11 @@ contextBridge.exposeInMainWorld("beacon", {
     prNumber: number
   ): Promise<FailedLogResult> =>
     ipcRenderer.invoke("ci:failed-log", repoPath, prNumber),
+  generateSuggestion: (
+    repoPath: string,
+    prNumber: number
+  ): Promise<SuggestionResult> =>
+    ipcRenderer.invoke("suggestion:generate", repoPath, prNumber),
   getLatestSuggestion: (
     repoPath: string,
     prNumber: number

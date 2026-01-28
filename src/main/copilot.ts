@@ -17,6 +17,8 @@ const createSystemPrompt = (): string =>
   "You are a fix-only Copilot agent for CI failures. " +
   "Use available tools to fetch CI logs and read local files. " +
   "Propose a concise unified diff and short summary. " +
+  "When asked for a suggestion, respond with JSON containing summary and diff fields only. " +
+  "Do not wrap JSON in code fences. " +
   "Do not commit, push, or modify files directly.";
 
 const assertReadableFile = (filePath: string): { size: number } | { error: string } => {

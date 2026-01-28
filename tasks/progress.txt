@@ -17,3 +17,4 @@
 2026-01-26: Added polling controller helper to prevent overlapping PR refreshes, refactored shell polling to use it, and introduced unit tests for polling behavior; updated quality task notes.
 2026-01-26: Added unit tests for failure classifier heuristics (empty, infra, code, mixed, unknown) and marked quality task complete.
 2026-01-26: Integrated Copilot SDK session startup with tools for CI log fetching and local file reading, added IPC for session start/stop, and marked copilot toolset task complete.
+2026-01-28: Added Copilot suggestion generation pipeline (generate IPC + UI action), storing diffs in SQLite-backed storage with PR/run references and skipping non-code failures; PR listing now persists PRs for suggestion lookup. Typecheck/test pass.

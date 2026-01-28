@@ -91,6 +91,151 @@ const isFailingCheck = (state: string): boolean => {
   );
 };
 
+const defaultCopilotModel = "gpt-5";
+
+const validateRepoPath = (repoPath: string): string | null => {
+  if (!repoPath) {
+    return "Select a repository first.";
+  }
+
+  if (!existsSync(repoPath)) {
+    return "Repository path no longer exists.";
+  }
+
+  try {
+    const stats = statSync(repoPath);
+    if (!stats.isDirectory()) {
+      return "Repository path is not a directory.";
+    }
+  } catch (error) {
+    return error instanceof Error ? error.message : "Unable to read repository path.";
+  }
+
+  return null;
+};
+
+const stripJsonFence = (content: string): string => {
+  const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  return match ? match[1].trim() : content.trim();
+};
+
+const parseSuggestionPayload = (
+  content: string
+): { diff: string; summary: string | null } | { error: string } => {
+  const cleaned = stripJsonFence(content);
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end <= start) {
+    return { error: "Copilot response did not include JSON payload." };
+  }
+
+  let parsed: { diff?: unknown; summary?: unknown };
+  try {
+    parsed = JSON.parse(cleaned.slice(start, end + 1)) as {
+      diff?: unknown;
+      summary?: unknown;
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? `Copilot response JSON parse failed. (${error.message})`
+          : "Copilot response JSON parse failed."
+    };
+  }
+
+  const diff = typeof parsed.diff === "string" ? parsed.diff.trim() : "";
+  const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+
+  if (!diff) {
+    return { error: "Copilot response did not include a diff." };
+  }
+
+  return { diff, summary: summary.length > 0 ? summary : null };
+};
+
+const buildSuggestionPrompt = (params: {
+  repoPath: string;
+  prNumber: number;
+  runId: number;
+  log: string;
+}): string => {
+  return [
+    "You are generating a fix suggestion for a CI failure.",
+    "Return JSON only in this shape:",
+    '{"summary":"short summary","diff":"unified diff"}',
+    "The diff must be a unified diff with ---/+++ headers and no code fences.",
+    "If no fix is possible, return a summary explaining why and an empty diff string.",
+    "Context:",
+    `Repo path: ${params.repoPath}`,
+    `PR number: ${params.prNumber}`,
+    `Run ID: ${params.runId}`,
+    "Failed log:",
+    params.log
+  ].join("\n");
+};
+
+const fetchFailedRunLog = async (
+  repoPath: string,
+  prNumber: number
+): Promise<FailedLogResult> => {
+  const repoError = validateRepoPath(repoPath);
+  if (repoError) {
+    return { error: repoError };
+  }
+
+  if (!Number.isFinite(prNumber) || prNumber <= 0) {
+    return { error: "Select a pull request first." };
+  }
+
+  try {
+    const { stdout } = await execFileAsync(
+      "gh",
+      [
+        "pr",
+        "checks",
+        String(prNumber),
+        "--json",
+        "name,state,detailsUrl,link"
+      ],
+      { cwd: repoPath }
+    );
+
+    const parsed: PrCheck[] = JSON.parse(stdout || "[]");
+    const failingCheck = parsed.find((check) => isFailingCheck(check.state));
+
+    if (!failingCheck) {
+      return { error: "No failing checks found for this PR." };
+    }
+
+    const runId =
+      extractRunId(failingCheck.detailsUrl) ?? extractRunId(failingCheck.link);
+
+    if (!runId) {
+      return { error: "Unable to determine run ID from PR checks." };
+    }
+
+    const { stdout: logOutput } = await execFileAsync(
+      "gh",
+      ["run", "view", String(runId), "--log-failed"],
+      { cwd: repoPath, maxBuffer: 10 * 1024 * 1024 }
+    );
+
+    const trimmedLog = logOutput.trimEnd();
+    return {
+      log: trimmedLog,
+      runId,
+      checkName: failingCheck.name,
+      classification: classifyFailure(trimmedLog)
+    };
+  } catch (error) {
+    const details =
+      error instanceof Error ? error.message : "Unable to fetch failed run logs.";
+    logError("Failed to fetch run logs", { error: details, prNumber });
+    return { error: `Failed to fetch run logs. (${details})` };
+  }
+};
+
 const createMainWindow = (): BrowserWindow => {
   const window = new BrowserWindow({
     width: 1200,
@@ -128,6 +273,31 @@ const main = async (): Promise<void> => {
     let copilotSession: Awaited<ReturnType<typeof createCopilotSession>> | null =
       null;
     let copilotSessionId = 0;
+
+    const resolveCopilotSession = async (): Promise<
+      | {
+          session: Awaited<ReturnType<typeof createCopilotSession>>;
+          temporary: boolean;
+        }
+      | { error: string }
+    > => {
+      if (copilotSession) {
+        return { session: copilotSession, temporary: false };
+      }
+
+      try {
+        const session = await createCopilotSession(defaultCopilotModel);
+        logInfo("Copilot session started for suggestion generation", {
+          model: defaultCopilotModel
+        });
+        return { session, temporary: true };
+      } catch (error) {
+        const details =
+          error instanceof Error ? error.message : "Unable to start Copilot session.";
+        logError("Copilot session start failed", { error: details });
+        return { error: details };
+      }
+    };
 
     app.on("will-quit", () => {
       if (copilotSession) {
@@ -233,6 +403,17 @@ const main = async (): Promise<void> => {
             status: pr.state
           }));
 
+          try {
+            prs.forEach((pr) => {
+              storage.upsertPullRequest(repoPath, pr);
+            });
+          } catch (error) {
+            logError("Failed to store pull requests", {
+              error: error instanceof Error ? error.message : "Unable to store PRs.",
+              repoPath
+            });
+          }
+
           return { prs };
         } catch (error) {
           const details =
@@ -253,81 +434,7 @@ const main = async (): Promise<void> => {
         repoPath: string,
         prNumber: number
       ): Promise<FailedLogResult> => {
-        if (!repoPath) {
-          return { error: "Select a repository first." };
-        }
-
-        if (!Number.isFinite(prNumber) || prNumber <= 0) {
-          return { error: "Select a pull request first." };
-        }
-
-        if (!existsSync(repoPath)) {
-          return { error: "Repository path no longer exists." };
-        }
-
-        try {
-          const stats = statSync(repoPath);
-          if (!stats.isDirectory()) {
-            return { error: "Repository path is not a directory." };
-          }
-        } catch (error) {
-          return {
-            error:
-              error instanceof Error
-                ? error.message
-                : "Unable to read repository path."
-          };
-        }
-
-        try {
-          const { stdout } = await execFileAsync(
-            "gh",
-            [
-              "pr",
-              "checks",
-              String(prNumber),
-              "--json",
-              "name,state,detailsUrl,link"
-            ],
-            { cwd: repoPath }
-          );
-
-          const parsed: PrCheck[] = JSON.parse(stdout || "[]");
-          const failingCheck = parsed.find((check) => isFailingCheck(check.state));
-
-          if (!failingCheck) {
-            return { error: "No failing checks found for this PR." };
-          }
-
-          const runId =
-            extractRunId(failingCheck.detailsUrl) ??
-            extractRunId(failingCheck.link);
-
-          if (!runId) {
-            return { error: "Unable to determine run ID from PR checks." };
-          }
-
-          const { stdout: logOutput } = await execFileAsync(
-            "gh",
-            ["run", "view", String(runId), "--log-failed"],
-            { cwd: repoPath, maxBuffer: 10 * 1024 * 1024 }
-          );
-
-          const trimmedLog = logOutput.trimEnd();
-          return {
-            log: trimmedLog,
-            runId,
-            checkName: failingCheck.name,
-            classification: classifyFailure(trimmedLog)
-          };
-        } catch (error) {
-          const details =
-            error instanceof Error
-              ? error.message
-              : "Unable to fetch failed run logs.";
-          logError("Failed to fetch run logs", { error: details, prNumber });
-          return { error: `Failed to fetch run logs. (${details})` };
-        }
+        return fetchFailedRunLog(repoPath, prNumber);
       }
     );
 
@@ -369,6 +476,99 @@ const main = async (): Promise<void> => {
             error instanceof Error ? error.message : "Unable to stop Copilot session.";
           logError("Copilot session stop failed", { error: details });
           return { stopped: false, error: details };
+        }
+      }
+    );
+
+    ipcMain.handle(
+      "suggestion:generate",
+      async (
+        _event,
+        repoPath: string,
+        prNumber: number
+      ): Promise<SuggestionResult> => {
+        const failedLog = await fetchFailedRunLog(repoPath, prNumber);
+        if (failedLog.error) {
+          return { error: failedLog.error };
+        }
+
+        const logText = failedLog.log ?? "";
+        if (!logText.trim()) {
+          return { error: "Failed log output was empty." };
+        }
+
+        const classification =
+          failedLog.classification ?? classifyFailure(logText);
+        if (classification.tag !== "code") {
+          return {
+            error: `Suggestion generation skipped. ${classification.reason}`
+          };
+        }
+
+        if (!failedLog.runId) {
+          return { error: "Failed to determine run ID for suggestion." };
+        }
+
+        const sessionResult = await resolveCopilotSession();
+        if ("error" in sessionResult) {
+          return { error: sessionResult.error };
+        }
+
+        const { session, temporary } = sessionResult;
+        try {
+          const prompt = buildSuggestionPrompt({
+            repoPath,
+            prNumber,
+            runId: failedLog.runId,
+            log: logText
+          });
+          const response = await session.session.sendAndWait(
+            { prompt },
+            120_000
+          );
+          const content = response?.data?.content;
+          if (!content) {
+            return { error: "Copilot did not return a suggestion." };
+          }
+
+          const parsed = parseSuggestionPayload(content);
+          if ("error" in parsed) {
+            return { error: parsed.error };
+          }
+
+          const saved = storage.saveSuggestionForPullRequest(
+            repoPath,
+            prNumber,
+            parsed.diff,
+            failedLog.runId,
+            parsed.summary ?? undefined
+          );
+
+          return {
+            diff: saved.diff,
+            summary: saved.summary,
+            runId: saved.runId,
+            createdAt: saved.createdAt
+          };
+        } catch (error) {
+          const details =
+            error instanceof Error
+              ? error.message
+              : "Unable to generate suggestion.";
+          logError("Failed to generate suggestion", {
+            error: details,
+            repoPath,
+            prNumber
+          });
+          return { error: `Failed to generate suggestion. (${details})` };
+        } finally {
+          if (temporary) {
+            await session.stop().catch((error) => {
+              logError("Failed to stop temporary Copilot session", {
+                error: error instanceof Error ? error.message : String(error)
+              });
+            });
+          }
         }
       }
     );

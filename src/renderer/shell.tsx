@@ -58,6 +58,7 @@ export const ShellLayout: React.FC = () => {
   const [isLoadingPrs, setIsLoadingPrs] = useState(false);
   const [isLoadingLog, setIsLoadingLog] = useState(false);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+  const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
   const [isApplyingSuggestion, setIsApplyingSuggestion] = useState(false);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<
@@ -313,6 +314,51 @@ export const ShellLayout: React.FC = () => {
     }
   };
 
+  const handleGenerateSuggestion = async () => {
+    if (!selectedRepo || !selectedPullRequest) {
+      return;
+    }
+
+    const generateClient = window.beacon?.generateSuggestion;
+    if (!generateClient) {
+      setLogError("Suggestion generation API unavailable.");
+      return;
+    }
+
+    setIsGeneratingSuggestion(true);
+    setLogError(null);
+    setApplyMessage(null);
+    try {
+      const result = await generateClient(selectedRepo, selectedPullRequest.number);
+      if (result.error) {
+        setLogError(result.error);
+        return;
+      }
+
+      const diff = result.diff;
+      if (!diff) {
+        setLogError("No suggestion diff returned.");
+        return;
+      }
+
+      setSuggestionsByPr((current) => ({
+        ...current,
+        [selectedPullRequest.number]: {
+          diff,
+          summary: result.summary,
+          runId: result.runId,
+          createdAt: result.createdAt
+        }
+      }));
+    } catch (error) {
+      setLogError(
+        error instanceof Error ? error.message : "Unable to generate suggestion."
+      );
+    } finally {
+      setIsGeneratingSuggestion(false);
+    }
+  };
+
   const handleApplySuggestion = async () => {
     if (!selectedRepo || !selectedPullRequest) {
       return;
@@ -522,6 +568,16 @@ export const ShellLayout: React.FC = () => {
                     disabled={isLoadingLog}
                   >
                     {isLoadingLog ? "Fetching log..." : "Fetch failed log"}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={handleGenerateSuggestion}
+                    disabled={isGeneratingSuggestion}
+                  >
+                    {isGeneratingSuggestion
+                      ? "Generating suggestion..."
+                      : "Generate suggestion"}
                   </button>
                   <button
                     type="button"
