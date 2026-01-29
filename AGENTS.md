@@ -32,11 +32,14 @@ outside the requested scope.
 - Start Electron (after build): `pnpm start`
 - Typecheck: `pnpm typecheck`
 - Tests: `pnpm test`
+- Rebuild native deps for Node: `pnpm rebuild:node`
+- Rebuild native deps for Electron: `pnpm rebuild:electron`
 
-## Single Test Runs (Vitest)
-- Single file: `pnpm test -- --run test/storage.test.ts`
-- Single test name: `pnpm test -- --run -t "upserts pull requests by repo"`
-- Watch a file: `pnpm test -- test/shell.test.ts`
+## Test Commands (Vitest)
+- `pnpm test` runs `pnpm rebuild:node` then `vitest run`.
+- Single file: `pnpm test -- test/storage.test.ts`
+- Single test name: `pnpm test -- -t "upserts pull requests by repo"`
+- Watch a file: `pnpm exec vitest test/shell.test.ts`
 
 ## Linting
 - No lint script defined in `package.json`.
@@ -46,6 +49,7 @@ outside the requested scope.
 - Build runs Vite + TypeScript builds for main/preload.
 - Preload is renamed via `scripts/rename-preload.cjs`.
 - Electron entrypoint: `dist/main/index.js`.
+- `pnpm start` runs `pnpm rebuild:electron` before launching.
 
 ## Runtime Requirements
 - macOS
@@ -84,6 +88,7 @@ outside the requested scope.
 ### Types
 - Use `type` for object shapes and unions (current convention).
 - Prefer narrow union types for finite state (`"infra" | "code" | "unknown"`).
+- Avoid explicit return types unless necessary; lean on inference.
 - Keep API boundary types in sync (preload + renderer ambient types).
 
 ### Naming
