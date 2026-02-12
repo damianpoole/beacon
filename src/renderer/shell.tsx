@@ -49,11 +49,11 @@ export const ShellLayout: React.FC = () => {
   const [pullRequestsByRepo, setPullRequestsByRepo] = useState<
     Record<string, PullRequest[]>
   >({});
-  const [failedLogsByPr, setFailedLogsByPr] = useState<
-    Record<number, FailedLog>
+  const [failedLogsByRepo, setFailedLogsByRepo] = useState<
+    Record<string, Record<number, FailedLog>>
   >({});
-  const [suggestionsByPr, setSuggestionsByPr] = useState<
-    Record<number, Suggestion>
+  const [suggestionsByRepo, setSuggestionsByRepo] = useState<
+    Record<string, Record<number, Suggestion>>
   >({});
   const [isLoadingPrs, setIsLoadingPrs] = useState(false);
   const [isLoadingLog, setIsLoadingLog] = useState(false);
@@ -115,6 +115,8 @@ export const ShellLayout: React.FC = () => {
   const pullRequests = selectedRepo ? pullRequestsByRepo[selectedRepo] ?? [] : [];
   const hasRepos = repoPaths.length > 0;
   const hasPrs = pullRequests.length > 0;
+  const failedLogsByPr = selectedRepo ? failedLogsByRepo[selectedRepo] ?? {} : {};
+  const suggestionsByPr = selectedRepo ? suggestionsByRepo[selectedRepo] ?? {} : {};
   const selectedPullRequest = selectedPrNumber
     ? pullRequests.find((pr) => pr.number === selectedPrNumber) ?? null
     : null;
@@ -140,7 +142,13 @@ export const ShellLayout: React.FC = () => {
     return "Needs review";
   };
   const handleAddRepo = async () => {
-    const result = await window.beacon.normalizeRepoPath(repoInput);
+    const normalizeClient = window.beacon?.normalizeRepoPath;
+    if (!normalizeClient) {
+      setErrorMessage("Repository API unavailable.");
+      return;
+    }
+
+    const result = await normalizeClient(repoInput);
 
     if (result.error) {
       setErrorMessage(result.error);
@@ -193,6 +201,10 @@ export const ShellLayout: React.FC = () => {
   const handleSelectRepo = (repo: string) => {
     setSelectedRepo(repo);
     setSelectedPrNumber(null);
+    setLogError(null);
+    setApplyMessage(null);
+    setFailedLogsByRepo((current) => ({ ...current, [repo]: {} }));
+    setSuggestionsByRepo((current) => ({ ...current, [repo]: {} }));
     void loadPullRequests(repo);
   };
 
@@ -253,15 +265,21 @@ export const ShellLayout: React.FC = () => {
         return;
       }
 
-      setFailedLogsByPr((current) => ({
-        ...current,
-        [selectedPullRequest.number]: {
-          log: logText,
-          runId: result.runId,
-          checkName: result.checkName,
-          classification: result.classification
-        }
-      }));
+      setFailedLogsByRepo((current) => {
+        const repoLogs = current[selectedRepo] ?? {};
+        return {
+          ...current,
+          [selectedRepo]: {
+            ...repoLogs,
+            [selectedPullRequest.number]: {
+              log: logText,
+              runId: result.runId,
+              checkName: result.checkName,
+              classification: result.classification
+            }
+          }
+        };
+      });
     } catch (error) {
       setLogError(error instanceof Error ? error.message : "Unable to load logs.");
     } finally {
@@ -296,15 +314,21 @@ export const ShellLayout: React.FC = () => {
         return;
       }
 
-      setSuggestionsByPr((current) => ({
-        ...current,
-        [selectedPullRequest.number]: {
-          diff,
-          summary: result.summary,
-          runId: result.runId,
-          createdAt: result.createdAt
-        }
-      }));
+      setSuggestionsByRepo((current) => {
+        const repoSuggestions = current[selectedRepo] ?? {};
+        return {
+          ...current,
+          [selectedRepo]: {
+            ...repoSuggestions,
+            [selectedPullRequest.number]: {
+              diff,
+              summary: result.summary,
+              runId: result.runId,
+              createdAt: result.createdAt
+            }
+          }
+        };
+      });
     } catch (error) {
       setLogError(
         error instanceof Error ? error.message : "Unable to load suggestion."
@@ -341,15 +365,21 @@ export const ShellLayout: React.FC = () => {
         return;
       }
 
-      setSuggestionsByPr((current) => ({
-        ...current,
-        [selectedPullRequest.number]: {
-          diff,
-          summary: result.summary,
-          runId: result.runId,
-          createdAt: result.createdAt
-        }
-      }));
+      setSuggestionsByRepo((current) => {
+        const repoSuggestions = current[selectedRepo] ?? {};
+        return {
+          ...current,
+          [selectedRepo]: {
+            ...repoSuggestions,
+            [selectedPullRequest.number]: {
+              diff,
+              summary: result.summary,
+              runId: result.runId,
+              createdAt: result.createdAt
+            }
+          }
+        };
+      });
     } catch (error) {
       setLogError(
         error instanceof Error ? error.message : "Unable to generate suggestion."

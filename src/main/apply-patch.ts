@@ -113,7 +113,13 @@ const parseUnifiedDiff = (diff: string): { files: FilePatch[]; errors: string[] 
   return { files, errors };
 };
 
-const applyFilePatch = (repoPath: string, patch: FilePatch): { applied?: string; error?: string } => {
+type PendingPatch = {
+  applied: string;
+  targetPath: string;
+  content: string;
+};
+
+const applyFilePatch = (repoPath: string, patch: FilePatch): { pending?: PendingPatch; error?: string } => {
   if (patch.oldPath === "/dev/null" || patch.newPath === "/dev/null") {
     return {
       error: `File additions/deletions are not supported (${patch.oldPath} -> ${patch.newPath}).`
@@ -175,23 +181,39 @@ const applyFilePatch = (repoPath: string, patch: FilePatch): { applied?: string;
     nextContent = nextContent.slice(0, -1);
   }
 
-  writeFileSync(targetPath, nextContent, "utf8");
-  return { applied: normalizedPath };
+  return {
+    pending: {
+      applied: normalizedPath,
+      targetPath,
+      content: nextContent
+    }
+  };
 };
 
 export const applyUnifiedDiff = (repoPath: string, diff: string): ApplyPatchResult => {
   const { files, errors } = parseUnifiedDiff(diff);
-  const appliedFiles: string[] = [];
   const resultErrors = [...errors];
+  const pendingWrites: PendingPatch[] = [];
 
   for (const file of files) {
     const result = applyFilePatch(repoPath, file);
     if (result.error) {
       resultErrors.push(result.error);
-    } else if (result.applied) {
-      appliedFiles.push(result.applied);
+    } else if (result.pending) {
+      pendingWrites.push(result.pending);
     }
   }
 
-  return { appliedFiles, errors: resultErrors };
+  if (resultErrors.length > 0) {
+    return { appliedFiles: [], errors: resultErrors };
+  }
+
+  for (const pending of pendingWrites) {
+    writeFileSync(pending.targetPath, pending.content, "utf8");
+  }
+
+  return {
+    appliedFiles: pendingWrites.map((pending) => pending.applied),
+    errors: []
+  };
 };
